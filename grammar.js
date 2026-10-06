@@ -12,13 +12,13 @@ const GRAMMAR={
     {q:'The church is ___ the market.',a:'next to',hint:'neben dem Markt'}
   ]},
   directions:{title:'Giving directions',subtitle:'Unit 4 · Getting around',intro:'Build useful sentences for giving directions.',tasks:[
-    {q:'___ straight on.',a:'Go',hint:'Geradeaus gehen.'},
-    {q:'___ left at the crossing.',a:'Turn',hint:'An der Kreuzung links abbiegen.'},
-    {q:'Go straight on ___ you get to the park.',a:'until',hint:'… bis du zum Park kommst.'},
-    {q:'The café is ___ your left.',a:'on',hint:'Das Café ist auf deiner linken Seite.'},
-    {q:'Go ___ the roundabout.',a:'round',hint:'Geh um den Kreisverkehr herum.'},
-    {q:'___ the road at the traffic lights.',a:'Cross',hint:'Überquere die Straße an der Ampel.'},
-    {q:'Walk ___ the road for two minutes.',a:'along',hint:'Geh die Straße entlang.'},
-    {q:'Go ___ the first street on the right.',a:'into',hint:'Geh in die erste Straße rechts.'}
+    {q:'___ straight on.',a:'Go',accept:['Go'],hint:'Geradeaus gehen.'},
+    {q:'___ left at the crossing.',a:'Turn',accept:['Turn','Go'],hint:'An der Kreuzung links abbiegen. Mehrere sinnvolle Formulierungen werden akzeptiert.'},
+    {q:'Go straight on ___ you get to the park.',a:'until',accept:['until'],hint:'… bis du zum Park kommst.'},
+    {q:'The café is ___ your left.',a:'on',accept:['on'],hint:'Das Café ist auf deiner linken Seite.'},
+    {q:'Go ___ the roundabout.',a:'round',accept:['round','around'],hint:'Geh um den Kreisverkehr herum.'},
+    {q:'___ the road at the traffic lights.',a:'Cross',accept:['Cross'],hint:'Überquere die Straße an der Ampel.'},
+    {q:'Walk ___ the road for two minutes.',a:'along',accept:['along'],hint:'Geh die Straße entlang.'},
+    {q:'Go ___ the first street on the right.',a:'into',accept:['into','down'],hint:'Geh in die erste Straße rechts.'}
   ]}
 };
