@@ -70,3 +70,55 @@ footer{text-align:center;color:#7b8598;font-size:.8rem;padding:30px}
 .mode-switch{justify-content:stretch}
 .mode-switch .btn{width:100%}
 }
+
+
+/* English faculty identity · calm red, rose and warm white */
+:root{--ink:#292e39;--blue:#8e1027;--soft:#fff0f0;--paper:#fff;--accent:#bf2b3d;--green:#34806d;--line:#f0dedf;--red:#bd2737;--dark-red:#820d25}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fffafb;color:var(--ink)}
+.topbar{max-width:none;padding:15px max(24px,calc((100% - 1280px)/2));border-bottom:1px solid #f1e2e3;background:#fffdfdf5}
+.brand{font-weight:750;color:var(--dark-red);font-size:1.55rem;letter-spacing:-.04em}
+.brand::before{content:"🚌";display:inline-block;margin-right:13px;font-size:1.45rem;vertical-align:middle}
+.tag{color:#77717b}
+.wrap{max-width:1280px;padding:35px 24px 85px}
+.hero{position:relative;overflow:hidden;background:linear-gradient(110deg,#fbeaea 0%,#fff0ed 65%,#f8dedb 100%);color:var(--dark-red);box-shadow:none;border-radius:23px;padding:38px 40px;margin-bottom:36px}
+.hero::after{content:"";position:absolute;right:-35px;bottom:-72px;width:320px;height:230px;border-radius:55% 45% 0 0;background:radial-gradient(circle at 62% 20%,#edb7b0 0 20%,transparent 21%),radial-gradient(circle at 24% 52%,#f3c8c3 0 32%,transparent 33%),linear-gradient(120deg,#f4c7c1,#f9deda);opacity:.5;pointer-events:none}
+.hero h1{font-weight:780;font-size:clamp(2.15rem,4vw,3.25rem);letter-spacing:-.055em;position:relative;z-index:1}
+.hero p{color:#625961;opacity:1;position:relative;z-index:1;font-size:1rem}
+.crumbs{color:#77717b;margin-bottom:23px}
+.crumbs button{color:var(--dark-red)}
+.section-title{font-size:1.4rem;color:var(--dark-red);letter-spacing:-.025em;font-weight:750;margin:32px 0 8px}
+.section-description{color:#79737b;margin:0 0 22px;font-size:.96rem}
+.grid{grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:16px}
+.card,.mode{border:1px solid #f0dedf;border-radius:19px;box-shadow:0 7px 22px #88202a0a}
+.card{padding:23px;transition:transform .16s,border-color .16s,box-shadow .16s}
+.card:hover,.card:focus-visible{border-color:#e9b9bc;box-shadow:0 12px 28px #88202a12;transform:translateY(-2px)}
+.card .num{font-size:.95rem;color:var(--red);font-weight:750}
+.card h3{font-weight:710;line-height:1.35;letter-spacing:-.02em}
+.small{color:#77727a}
+.btn{background:var(--red);font-weight:650;border-radius:11px}
+.btn.secondary{background:#fff0f0;color:var(--dark-red)}
+.btn:hover{filter:brightness(.96)}
+.gamebar span{box-shadow:none;border-color:#f0dedf}
+.progress{background:#f5e8e9}
+.progress i{background:var(--red)}
+.featured{border-color:#d66d75;background:#fff5f4}
+.prompt{font-weight:730}
+.score{color:var(--dark-red)}
+.input:focus{border-color:#cb5260}
+.selected{outline-color:#d66d75}
+.vocab-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:stretch}
+.vocab-card{min-height:254px;display:flex;flex-direction:column;padding:22px;cursor:pointer}
+.vocab-top{display:flex;align-items:center;gap:13px;margin-bottom:19px}
+.list-number{background:#ffe4e5;border:1px solid #f8c8ca;border-radius:10px;min-width:43px;height:43px;display:grid;place-items:center;font-weight:750;color:var(--dark-red);font-size:1.3rem}
+.vocab-pages{font-size:.84rem;color:#827c84}
+.vocab-card h3{color:var(--dark-red);font-size:1rem;margin:0 0 9px}
+.vocab-description{font-size:.88rem;color:#77727a;line-height:1.45;margin:0 0 18px;overflow-wrap:anywhere}
+.vocab-bottom{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:15px}
+.word-count{color:#615b64;font-size:.87rem}
+.vocab-start{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;font-size:.88rem;padding:12px 10px;margin-top:0}
+.vocab-start span{font-size:1.2rem}
+.question{border-color:#efddde;box-shadow:0 10px 28px #88202a0a}
+footer{color:#8b8186}
+@media(max-width:1050px){.vocab-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.vocab-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{padding:26px 17px 65px}.hero{padding:29px 25px}.hero::after{width:180px;height:145px;bottom:-60px}.topbar{padding:14px 18px}}
+@media(max-width:440px){.vocab-grid{grid-template-columns:1fr}.vocab-card{min-height:215px}.brand{font-size:1.25rem}.brand::before{margin-right:7px}}
