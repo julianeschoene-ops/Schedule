@@ -45,3 +45,51 @@ const GRAMMAR={
   {q:'I ___ football yesterday. (not play)',a:"didn't play",accept:["didn't play",'did not play'],hint:'didn’t + Grundform.'},{q:'Mia ___ her grandma. (not visit)',a:"didn't visit",accept:["didn't visit",'did not visit'],hint:'didn’t + Grundform.'},{q:'We ___ to the park. (not go)',a:"didn't go",accept:["didn't go",'did not go'],hint:'Nach didn’t steht go, nicht went.'},{q:'Ben ___ the film. (not watch)',a:"didn't watch",accept:["didn't watch",'did not watch'],hint:'didn’t + Grundform.'},{q:'They ___ breakfast. (not eat)',a:"didn't eat",accept:["didn't eat",'did not eat'],hint:'Nach didn’t steht eat.'},{q:'I ___ tired yesterday. (not be)',a:"wasn't",accept:["wasn't",'was not'],hint:'Verneinung von was.'},{q:'We ___ at school. (not be)',a:"weren't",accept:["weren't",'were not'],hint:'Verneinung von were.'},{q:'It ___ cold last week. (not be)',a:"wasn't",accept:["wasn't",'was not'],hint:'Verneinung von was.'}
  ]}
 };
+
+Object.assign(GRAMMAR,{
+ gerund:{unit:3,title:'Free-time activities · -ing',subtitle:'Daily life · gerund',intro:'Use the -ing form after like and love.',tasks:[
+ {q:'I like ___ football. (play)',a:'playing',hint:'play + ing'},
+ {q:'She loves ___ books. (read)',a:'reading',hint:'read + ing'},
+ {q:'We like ___ to music. (listen)',a:'listening',hint:'listen + ing'},
+ {q:'Ben likes ___ in the park. (run)',a:'running',hint:'Double the last consonant.'},
+ {q:'I love ___ photos. (take)',a:'taking',hint:'Drop the final e.'},
+ {q:'My sister likes ___ . (dance)',a:'dancing',hint:'Drop the final e.'},
+ {q:'They enjoy ___ . (swim)',a:'swimming',hint:'Double m.'},
+ {q:'Do you like ___? (draw)',a:'drawing',hint:'draw + ing'}]},
+ simple_present:{unit:3,title:'Simple present · statements',subtitle:'Daily life · routines',intro:'Talk about things you do every day. He, she and it usually take -s.',tasks:[
+ {q:'I ___ up at seven. (get)',a:'get',hint:'I + base form'},
+ {q:'She ___ up at seven. (get)',a:'gets',hint:'He/she/it + s'},
+ {q:'We ___ football after school. (play)',a:'play',hint:'We + base form'},
+ {q:'Tom ___ TV on Friday. (watch)',a:'watches',hint:'watch + es'},
+ {q:'Mia ___ her homework. (do)',a:'does',hint:'do → does'},
+ {q:'My brother ___ to school. (go)',a:'goes',hint:'go → goes'},
+ {q:'They ___ music. (like)',a:'like',hint:'They + base form'},
+ {q:'He ___ breakfast at eight. (have)',a:'has',hint:'have → has'}]},
+ simple_present_questions:{unit:3,title:'Simple present · questions',subtitle:'Daily life · do / does',intro:'Ask about everyday habits with do or does.',tasks:[
+ {q:'___ you play football?',a:'Do',hint:'you → do'},
+ {q:'___ she like music?',a:'Does',hint:'she → does'},
+ {q:'What time ___ Ben get up?',a:'does',hint:'Ben = he'},
+ {q:'Where ___ they live?',a:'do',hint:'they → do'},
+ {q:'___ your mum work at school?',a:'Does',hint:'mum = she'},
+ {q:'What ___ you do on Sundays?',a:'do',hint:'you → do'},
+ {q:'___ he watch TV in the evening?',a:'Does',hint:'he → does'},
+ {q:'When ___ we have English?',a:'do',hint:'we → do'}]},
+ frequency:{unit:3,title:'Adverbs of frequency',subtitle:'Daily life · always / often / never',intro:'Use frequency words to say how often you do something.',tasks:[
+ {q:'I ___ have breakfast before school. (immer)',a:'always',hint:'100%'},
+ {q:'She ___ plays tennis on Saturdays. (oft)',a:'often',hint:'many times'},
+ {q:'We ___ go swimming in winter. (nie)',a:'never',hint:'0%'},
+ {q:'I ___ read after dinner. (manchmal)',a:'sometimes',hint:'not every day'},
+ {q:'They ___ walk to school. (gewöhnlich)',a:'usually',hint:'most days'},
+ {q:'He is ___ late. (nie)',a:'never',hint:'After the verb be'},
+ {q:'My sister ___ listens to music. (oft)',a:'often',hint:'Before the main verb'},
+ {q:'We ___ have lunch at one. (immer)',a:'always',hint:'100%'}]},
+ clock:{unit:3,title:'Telling the time',subtitle:'Daily life · the clock',intro:'Read and write times in English.',tasks:[
+ {q:'7:00 = seven ___.',a:"o'clock",hint:'Full hour'},
+ {q:'7:15 = quarter ___ seven.',a:'past',hint:'15 minutes after'},
+ {q:'7:30 = half ___ seven.',a:'past',hint:'30 minutes after'},
+ {q:'7:45 = quarter ___ eight.',a:'to',hint:'15 minutes before'},
+ {q:'8:10 = ten ___ eight.',a:'past',hint:'10 minutes after'},
+ {q:'8:50 = ten ___ nine.',a:'to',hint:'10 minutes before'},
+ {q:'9:20 = twenty ___ nine.',a:'past',hint:'20 minutes after'},
+ {q:'9:40 = twenty ___ ten.',a:'to',hint:'20 minutes before'}]}
+});
