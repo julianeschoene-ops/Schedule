@@ -122,3 +122,24 @@ footer{color:#8b8186}
 @media(max-width:1050px){.vocab-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:720px){.vocab-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{padding:26px 17px 65px}.hero{padding:29px 25px}.hero::after{width:180px;height:145px;bottom:-60px}.topbar{padding:14px 18px}}
 @media(max-width:440px){.vocab-grid{grid-template-columns:1fr}.vocab-card{min-height:215px}.brand{font-size:1.25rem}.brand::before{margin-right:7px}}
+
+/* London homepage – illustrated skyline on the right, no bus icon */
+.brand::before{content:none;display:none}
+.brand{font-size:1.5rem}
+.home-topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+.home-topline .gamebar{margin:0}
+.home-hero{min-height:280px;display:flex;align-items:center;background-image:url('london-hero.svg'),linear-gradient(110deg,#fce9e9,#fff0ed 65%,#f6ceca);background-repeat:no-repeat;background-position:right bottom,center;background-size:auto 100%,cover;padding:44px 46px}
+.home-hero::after{display:none}
+.home-hero .hero-copy{position:relative;z-index:1;max-width:58%}
+.home-hero h1{font-size:clamp(2.8rem,5.1vw,4.7rem);line-height:1.05;letter-spacing:-.06em}
+.home-hero h1 span{font-weight:420}
+.home-hero p{font-size:1.22rem;line-height:1.48;margin-top:18px}
+.home-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.home-card{position:relative;min-height:282px;display:flex;flex-direction:column;padding:26px 24px 60px}
+.home-card .num{font-size:.92rem;margin-top:18px}
+.home-card h3{color:var(--dark-red);font-size:1.36rem;margin:9px 0}
+.home-card .small{font-size:1rem;line-height:1.45}
+.home-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#ffe4e6;color:var(--dark-red);font-size:1.8rem;font-weight:450}
+.home-arrow{position:absolute;right:21px;bottom:19px;width:42px;height:42px;border-radius:50%;background:#ffe7e8;color:var(--dark-red);display:grid;place-items:center;font-size:1.7rem}
+@media(max-width:950px){.home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-hero{background-size:auto 88%,cover}.home-hero .hero-copy{max-width:60%}}
+@media(max-width:580px){.home-grid{grid-template-columns:1fr}.home-card{min-height:215px}.home-hero{min-height:245px;background-size:auto 64%,cover;background-position:right bottom,center;padding:30px 22px}.home-hero .hero-copy{max-width:78%}.home-hero h1{font-size:2.55rem}.home-hero p{font-size:.95rem}.home-topline{align-items:flex-start;flex-direction:column}.home-reset{align-self:flex-end}}
