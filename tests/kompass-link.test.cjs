@@ -14,11 +14,11 @@ function storage() {
 }
 function setup(fetch, hash = '') {
   const app = {innerHTML:''}, c = {
-    console,URLSearchParams,AbortController,crypto:webcrypto,Date,
+    console,URLSearchParams,AbortController,crypto:webcrypto,Date:class extends Date {},
     location:{hash,pathname:'/Schedule/',search:''},
     history:{replaceState(_a,_b,url){c.location.hash='';c.lastUrl=url;}},
     document:{querySelector:()=>app,getElementById:()=>null,addEventListener(){}},
-    sessionStorage:storage(),localStorage:storage(),fetch,
+    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>url.endsWith('kompass_english_test_window')?Promise.resolve(response({open:true,test_date:'2026-10-23'})):fetch(url,init),
     setInterval(){},setTimeout,clearTimeout,confirm:()=>true,alert(){},prompt:()=>null,
     addEventListener(){},
     VOCAB:{u1:{unit:1,number:1,title:'School',words:Array.from({length:10},(_,n)=>['word'+n,'Wort'+n])}}
@@ -48,7 +48,7 @@ test('only test mode submits; repeated finish sends one attempt; end clears iden
   await c.link.connect(code);await c.link.login('123456');c.link.confirm();
   vm.runInContext("current='u1';start('de-en');score=5;i=deck.length;finish()",c);
   await tick();assert.equal(submissions.length,0);
-  vm.runInContext("startTest(10);score=8;i=deck.length;finish();finish()",c);
+  await vm.runInContext("startTest(10)",c);vm.runInContext("score=8;i=deck.length;finish();finish()",c);
   await tick();await tick();
   assert.equal(submissions.length,1);assert.equal(submissions[0].p_points,8);
   assert.equal(submissions[0].p_max_points,10);assert.equal(submissions[0].p_token,code);
@@ -90,4 +90,20 @@ test('wrong PIN never reveals a name or enables submissions',async()=>{
   const c=setup(async()=>response({ok:false,message:'QR-Code oder PIN ungültig.'}));
   await c.link.connect(code);await c.link.login('000000');
   assert.equal(c.link.state,'pin');assert.equal(c.link.active,false);assert.equal(c.link.name,'');assert.equal(c.link.pin,null);
+});
+
+test('server time, rather than the device clock, controls test access',async()=>{
+  const c=setup(async()=>response({ok:true,first_name:'Alex'}));
+  c.fetch=async()=>response({open:false,test_date:'2026-10-23',server_now:'2026-10-23T18:00:00Z'});
+  // Pretend the device clock says it is in the permitted morning window.
+  vm.runInContext("Date.now=()=>new Date('2026-10-23T08:00:00Z').getTime()",c);
+  assert.equal(await c.link.canStartTest(),false);
+  c.fetch=async()=>response({open:true,test_date:'2026-10-23'});
+  assert.equal(await c.link.canStartTest(),true);
+});
+test('a closed-window submission is discarded instead of uploading the next morning',async()=>{
+  const c=setup(async(url)=>url.endsWith('resolve_code_v2')?response({ok:true,first_name:'Alex'}):response({ok:false,window_closed:true,message:'Testzeit ist geschlossen.'}));
+  await c.link.connect(code);await c.link.login('123456');c.link.confirm();
+  c.link.windowInfo={test_date:'2026-10-23'};c.link.beginTest('vocab:u1','School');c.link.finishTest(7,10);
+  await tick();await tick();assert.equal(c.link.pending.length,0);assert.equal(c.link.attempt.status,'failed');
 });

@@ -120,13 +120,26 @@ const PracticeLink = {
     const status = document.getElementById('ep-result-status');
     if (status) status.innerHTML = this.resultMarkup();
   },
+  async testWindow() {
+    try {
+      const info = await this.rpc('kompass_english_test_window', {});
+      this.windowInfo = info;
+      return info;
+    } catch (_) { return null; }
+  },
+  async canStartTest() {
+    const info = await this.testWindow();
+    if (!info) { alert('Die Testzeit konnte nicht geprüft werden. Bitte die Verbindung prüfen. Üben geht weiterhin.'); return false; }
+    if (!info.open) { alert('Testzeit: 8:00–12:30 Uhr. Üben kannst du jederzeit.'); return false; }
+    return true;
+  },
   beginTest(taskKey, topic) {
     this.touch();
     if (this.candidate && !this.active) {
       alert('Bitte zuerst oben deine PIN eingeben und deinen Namen bestätigen.'); return false;
     }
     if (!this.active && !confirm('Du übst ohne persönlichen Code. Dieser Test wird nicht an deine Lehrkraft übertragen. Trotzdem starten?')) return false;
-    this.attempt = {id:crypto.randomUUID(),token:this.active ? this.token : null,taskKey,topic,status:'started'};
+    this.attempt = {id:crypto.randomUUID(),token:this.active ? this.token : null,taskKey,topic,testDate:this.windowInfo?.test_date,status:'started'};
     return true;
   },
   finishTest(points, max) {
@@ -136,7 +149,7 @@ const PracticeLink = {
     if (this.attempt !== a) return;
     if (!a.token || !this.active || a.token !== this.token) { a.status = 'guest'; return; }
     a.status = 'pending';
-    this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max});
+    this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max,p_test_date:a.testDate});
     this.persist(); this.flush();
   },
   resultMarkup() {
@@ -156,9 +169,14 @@ const PracticeLink = {
       for (const payload of [...this.pending]) {
         if (generation !== this.generation || !this.active || payload.p_token !== token) break;
         try {
-          const r = await this.rpc('kompass_english_submit_result_v2', {...payload,p_pin:this.pin});
+          const r = await this.rpc('kompass_english_submit_result_v3', {...payload,p_pin:this.pin});
           if (generation !== this.generation) break;
           if (!r.saved) {
+            if (r.window_closed) {
+              this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
+              if (this.attempt?.id === payload.p_attempt_id) { this.attempt.status = 'failed'; this.message = r.message; }
+              this.persist(); this.paint(); continue;
+            }
             if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
             this.message = r.message || 'Speicherung nicht bestätigt.'; this.paint(); break;
           }

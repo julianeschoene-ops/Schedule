@@ -147,3 +147,5 @@ footer{color:#8b8186}
 
 /* Personal KOMPASS connection, aligned with the page content. */
 .practice-link{width:100%;box-sizing:border-box;background:#fff8f2;border:1px solid #e4cec4;border-radius:14px;padding:14px 18px;margin:12px 0;color:#49252c;font-size:.9rem;line-height:1.5}.practice-link p{margin:8px 0}.practice-link .btn{font-size:.85rem;padding:8px 12px;margin:4px}.home-topline{flex-wrap:wrap}.gamebar{flex-wrap:wrap}#practice-connection{width:100%}#ep-result-status{font-size:.95rem;background:#fff8f2;border-radius:10px;padding:12px}
+
+.ep-test-start:disabled{opacity:.5;cursor:not-allowed}
