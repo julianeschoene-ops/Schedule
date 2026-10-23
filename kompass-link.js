@@ -1,0 +1,170 @@
+/* Personal, session-only connection. No child roster or teacher credentials. */
+const PracticeLink = {
+  url: 'https://gexhcpyzwzybrpuygqmf.supabase.co/rest/v1/rpc/',
+  key: 'sb_publishable_U7Dp3SXHADswPjg4Vj7mzw_kG27owvK',
+  storageKey: 'ep-kompass-session', idleMs: 30 * 60 * 1000,
+  token: null, candidate: null, name: '', active: false, last: 0,
+  pending: [], attempt: null, state: 'guest', message: '', flushing: false, generation: 0,
+  initialCode: new URLSearchParams(location.hash.slice(1)).get('code'),
+  capture() {
+    if (this.initialCode !== null) history.replaceState(null, '', location.pathname + location.search);
+  },
+  escape(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
+  persist() {
+    try {
+      if (!this.token) return sessionStorage.removeItem(this.storageKey);
+      sessionStorage.setItem(this.storageKey, JSON.stringify({token:this.token,last:this.last,pending:this.pending}));
+    } catch (_) { /* Current tab still works if session storage is unavailable. */ }
+  },
+  async rpc(name, payload) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 12000);
+    try {
+      const r = await fetch(this.url + name, {method:'POST',cache:'no-store',referrerPolicy:'no-referrer',
+        headers:{'Content-Type':'application/json',apikey:this.key},body:JSON.stringify(payload),signal:controller.signal});
+      const data = await r.json();
+      if (!r.ok) {
+        const e = new Error(data.message || 'Verbindung fehlgeschlagen.');
+        e.status = r.status; e.code = data.code; throw e;
+      }
+      return data;
+    } finally { clearTimeout(timer); }
+  },
+  reset() {
+    this.generation++; this.token = null; this.candidate = null; this.name = ''; this.active = false;
+    this.pending = []; this.attempt = null; this.state = 'guest'; this.message = '';
+    try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
+    this.paint();
+  },
+  touch() {
+    if (this.token && Date.now() - this.last > this.idleMs) {
+      this.reset();
+      if (typeof clearPracticeData === 'function') clearPracticeData();
+      return;
+    }
+    if (this.token) { this.last = Date.now(); this.persist(); }
+  },
+  async boot() {
+    let stored = null;
+    try { stored = JSON.parse(sessionStorage.getItem(this.storageKey) || 'null'); } catch (_) {}
+    const code = this.initialCode;
+    this.initialCode = null;
+    if (code !== null) {
+      this.reset();
+      if (typeof clearPracticeData === 'function') clearPracticeData();
+      return this.connect(code);
+    }
+    if (stored?.token && Date.now() - Number(stored.last) < this.idleMs) {
+      return this.connect(stored.token, stored.pending);
+    }
+    this.reset();
+  },
+  async connect(raw, pending = []) {
+    let code = String(raw || '').trim();
+    if (code.includes('#code=')) code = code.split('#code=')[1].split('&')[0];
+    this.reset();
+    if (!/^[a-f0-9]{64}$/.test(code)) {
+      this.state = 'error'; this.message = 'Dieser Code ist ungültig. Bitte deinen persönlichen QR-Code scannen.';
+      return this.paint();
+    }
+    const generation = this.generation;
+    this.candidate = code; this.state = 'checking'; this.paint();
+    try {
+      const data = await this.rpc('kompass_english_resolve_code', {p_token:code});
+      if (generation !== this.generation) return;
+      this.token = code; this.name = data.first_name; this.last = Date.now();
+      this.pending = Array.isArray(pending) ? pending.filter(p => p?.p_token === code).slice(-30) : [];
+      this.state = 'confirm'; this.persist(); this.paint();
+    } catch (e) {
+      if (generation !== this.generation) return;
+      this.state = 'error';
+      this.message = e.status === 400 ? 'Code ungültig oder gesperrt. Bitte deine Lehrkraft fragen.'
+        : 'Dein Code konnte gerade nicht geprüft werden. Bitte die Verbindung prüfen und erneut versuchen.';
+      this.paint();
+    }
+  },
+  confirm() {
+    if (this.state !== 'confirm' || !this.token) return;
+    this.active = true; this.state = 'active'; this.last = Date.now(); this.persist();
+    this.paint(); this.flush();
+  },
+  enterCode() {
+    if (this.active && !confirm('Mit einem anderen Übungscode fortfahren? Bitte zuerst alle Testergebnisse übertragen.')) return;
+    const code = prompt('Persönlichen Übungscode oder Übungslink eingeben:');
+    if (code !== null) { if (typeof clearPracticeData === 'function') clearPracticeData(); this.connect(code); }
+  },
+  markup() {
+    const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Code eingeben</button>';
+    if (this.state === 'checking') return '<div class="practice-link" role="status">Dein Übungscode wird geprüft …</div>';
+    if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p>Deine abgeschlossenen Vokabeltests werden für deine Lehrkraft in KOMPASS gespeichert.</p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
+    if (this.active) return `<div class="practice-link" role="status"><b>Hallo ${this.escape(this.name)}!</b> Deine Vokabeltests werden in KOMPASS gespeichert.${this.pending.length ? `<p>${this.pending.length} Ergebnis(se) warten auf Übertragung. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button></p>` : ''}</div>`;
+    if (this.state === 'error') return `<div class="practice-link" role="status">${this.escape(this.message)} ${this.candidate ? '<button class="btn secondary" onclick="PracticeLink.connect(PracticeLink.candidate)">Erneut prüfen</button>' : ''} ${button}</div>`;
+    return `<div class="practice-link"><span>Üben ohne Code · Testergebnisse werden nicht an die Lehrkraft übertragen.</span> ${button}</div>`;
+  },
+  paint() {
+    const target = document.getElementById('practice-connection');
+    if (target) target.innerHTML = this.markup();
+    const status = document.getElementById('ep-result-status');
+    if (status) status.innerHTML = this.resultMarkup();
+  },
+  beginTest(taskKey, topic) {
+    this.touch();
+    if (this.token && !this.active) {
+      alert('Bitte zuerst oben bestätigen, dass dies dein Übungscode ist.'); return false;
+    }
+    if (!this.active && !confirm('Du übst ohne persönlichen Code. Dieser Test wird nicht an deine Lehrkraft übertragen. Trotzdem starten?')) return false;
+    this.attempt = {id:crypto.randomUUID(),token:this.active ? this.token : null,taskKey,topic,status:'started'};
+    return true;
+  },
+  finishTest(points, max) {
+    const a = this.attempt;
+    if (!a || a.status !== 'started') return;
+    this.touch();
+    if (this.attempt !== a) return;
+    if (!a.token || !this.active || a.token !== this.token) { a.status = 'guest'; return; }
+    a.status = 'pending';
+    this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max});
+    this.persist(); this.flush();
+  },
+  resultMarkup() {
+    const a = this.attempt;
+    if (!a || a.status === 'guest' || !a.token) return 'Ohne persönlichen Code: Dieses Ergebnis wurde nicht an KOMPASS übertragen.';
+    if (a.status === 'saved') return '✓ Dein Testergebnis wurde in KOMPASS gespeichert.';
+    if (a.status === 'failed') return 'Dieses Ergebnis konnte nicht gespeichert werden. Bitte deine Lehrkraft fragen.';
+    return 'Dein Ergebnis wartet auf Übertragung. Bitte diese Seite offen lassen. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button>';
+  },
+  async flush() {
+    if (this.flushing || !this.active || !this.token) return;
+    this.touch();
+    if (!this.active) return;
+    this.flushing = true;
+    const generation = this.generation, token = this.token;
+    try {
+      for (const payload of [...this.pending]) {
+        if (generation !== this.generation || !this.active || payload.p_token !== token) break;
+        try {
+          const r = await this.rpc('kompass_english_submit_result', payload);
+          if (generation !== this.generation) break;
+          if (!r.saved) throw new Error('Speicherung nicht bestätigt.');
+          this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
+          if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'saved';
+          this.persist(); this.paint();
+        } catch (e) {
+          if (generation !== this.generation) break;
+          if (e.status === 400 && e.code === 'P0001' && this.attempt?.id === payload.p_attempt_id)
+            this.attempt.status = 'failed';
+          this.paint(); break;
+        }
+      }
+    } finally { this.flushing = false; }
+  },
+  canEnd() {
+    return !this.pending.length || confirm('Es warten noch Testergebnisse auf die Übertragung. Beim Beenden werden sie auf diesem Gerät gelöscht. Trotzdem beenden?');
+  }
+};
+PracticeLink.capture();
+document.addEventListener('click', () => PracticeLink.touch(), {passive:true});
+document.addEventListener('keydown', () => PracticeLink.touch(), {passive:true});
+window.addEventListener('online', () => PracticeLink.flush());
+setInterval(() => {
+  if (PracticeLink.token && Date.now() - PracticeLink.last > PracticeLink.idleMs) PracticeLink.reset();
+}, 30000);

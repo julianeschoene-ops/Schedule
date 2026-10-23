@@ -143,3 +143,7 @@ footer{color:#8b8186}
 .home-arrow{position:absolute;right:21px;bottom:19px;width:42px;height:42px;border-radius:50%;background:#ffe7e8;color:var(--dark-red);display:grid;place-items:center;font-size:1.7rem}
 @media(max-width:950px){.home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-hero{background-size:auto 88%,cover}.home-hero .hero-copy{max-width:60%}}
 @media(max-width:580px){.home-grid{grid-template-columns:1fr}.home-card{min-height:215px}.home-hero{min-height:245px;background-size:auto 64%,cover;background-position:right bottom,center;padding:30px 22px}.home-hero .hero-copy{max-width:78%}.home-hero h1{font-size:2.55rem}.home-hero p{font-size:.95rem}.home-topline{align-items:flex-start;flex-direction:column}.home-reset{align-self:flex-end}}
+
+
+/* Personal KOMPASS connection, aligned with the page content. */
+.practice-link{width:100%;box-sizing:border-box;background:#fff8f2;border:1px solid #e4cec4;border-radius:14px;padding:14px 18px;margin:12px 0;color:#49252c;font-size:.9rem;line-height:1.5}.practice-link p{margin:8px 0}.practice-link .btn{font-size:.85rem;padding:8px 12px;margin:4px}.home-topline{flex-wrap:wrap}.gamebar{flex-wrap:wrap}#practice-connection{width:100%}#ep-result-status{font-size:.95rem;background:#fff8f2;border-radius:10px;padding:12px}
