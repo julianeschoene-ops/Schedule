@@ -14,13 +14,13 @@ function storage() {
 }
 const catalog=[{id:'u4-test-1',task_key:'vocab:lwl-u4-test-1',unit:4,title:'Vocabulary Test 1',source:'LWL · Station 1 · Aufgabe 2a',list:'16',range:'shop – now',question_count:23,competency_id:'eng5_5',competency_text:'Ich kann Orts- und Zeitangaben verstehen und richtig benutzen.',competency_area:'Sprachliche Mittel – Wortschatz',scope:'Wortschatz-Teilnachweis'},
 {id:'u4-test-2',task_key:'vocab:lwl-u4-test-2',unit:4,title:'Vocabulary Test 2',source:'LWL · Station 2 · Aufgabe 3a',list:'17',range:'way – by (bike)',question_count:50,competency_id:'eng5_5',competency_text:'Ich kann Orts- und Zeitangaben verstehen und richtig benutzen.',competency_area:'Sprachliche Mittel – Wortschatz',scope:'Wortschatz-Teilnachweis'}];
-function setup(fetch, hash = '') {
+function setup(fetch, hash = '', testCatalog = catalog) {
   const app = {innerHTML:''}, c = {
     console,URLSearchParams,AbortController,crypto:webcrypto,Date:class extends Date {},
     location:{hash,pathname:'/Schedule/',search:''},
     history:{replaceState(_a,_b,url){c.location.hash='';c.lastUrl=url;}},
     document:{querySelector:()=>app,getElementById:()=>null,querySelectorAll:()=>[],addEventListener(){}},
-    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>url.endsWith('kompass_english_test_window')?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:catalog})):fetch(url,init),
+    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>url.endsWith('kompass_english_test_window')?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:testCatalog})):fetch(url,init),
     setInterval(){},setTimeout,clearTimeout,confirm:()=>true,alert(){},prompt:()=>null,
     addEventListener(){},
     VOCAB:{'16':{unit:4,number:16,title:'shop – now',words:Array.from({length:23},(_,n)=>['word'+n,'Wort'+n])},'17':{unit:4,number:17,title:'way – by (bike)',words:Array.from({length:50},(_,n)=>['word'+n,'Wort'+n])},u1:{unit:1,number:1,title:'School',words:Array.from({length:10},(_,n)=>['word'+n,'Wort'+n])}}
@@ -175,4 +175,36 @@ test('the closing timer uses server duration and removes an unfinished test',asy
 test('a closing test timer does not interrupt practice after leaving the area',()=>{
  const c=setup(async()=>response({}));vm.runInContext("current='u1';start('de-en')",c);c.location.hash='#list-u1';const html=c.document.querySelector().innerHTML;
  vm.runInContext("closeTestArea('closed')",c);assert.equal(c.document.querySelector().innerHTML,html);assert.equal(vm.runInContext('mode',c),'de-en');
+});
+
+const supplementary=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/unit4-checks.json'),'utf8')).map(t=>({...t,competency_id:t.competency,competency_text:'Rasterkompetenz '+t.competency,competency_area:t.kind==='reading'?'Verstehen – Leseverstehen':t.kind==='listening'?'Verstehen – Hörverstehen':'Lehrkraftbewertung'}));
+async function authenticate(c){await c.link.connect(code);await c.link.login('123456');c.link.confirm()}
+test('supplementary reading check submits once to its own competency without revealing solutions',async()=>{
+ const submissions=[];const c=setup(async(url,init)=>{if(url.endsWith('resolve_code_v2'))return response({ok:true,first_name:'Alex'});submissions.push(JSON.parse(init.body));return response({saved:true})},'',supplementary);
+ await authenticate(c);await vm.runInContext("startAssessment('u4-reading')",c);
+ assert.match(c.document.querySelector().innerHTML,/Leseverstehen/);assert.ok(!c.document.querySelector().innerHTML.includes('Answer:'));
+ for(let n=0;n<4;n++)vm.runInContext('answerCompetencyQuestion(i,deck[i].answer)',c);
+ await tick();await tick();vm.runInContext('finish()',c);await tick();
+ assert.equal(submissions.length,1);assert.equal(submissions[0].p_task_key,'assessment:lwl-u4-reading');assert.equal(submissions[0].p_points,4);assert.equal(submissions[0].p_max_points,4);
+});
+test('listening hides transcripts, requires hearing audio and allows at most two plays per question',async()=>{
+ const spoken=[];const c=setup(async()=>response({ok:true,first_name:'Alex'}),'',supplementary);
+ c.SpeechSynthesisUtterance=function(text){this.text=text};c.speechSynthesis={cancel(){},speak:u=>spoken.push(u)};
+ await authenticate(c);await vm.runInContext("startAssessment('u4-listening')",c);
+ const transcript=vm.runInContext('deck[0].text',c);assert.ok(!c.document.querySelector().innerHTML.includes(transcript));
+ vm.runInContext('answerCompetencyQuestion(0,0)',c);assert.equal(vm.runInContext('i',c),0);
+ vm.runInContext('playCompetencyAudio()',c);assert.equal(spoken[0].text,transcript);spoken[0].onend();
+ vm.runInContext('playCompetencyAudio()',c);spoken[1].onend();vm.runInContext('playCompetencyAudio()',c);assert.equal(spoken.length,2);
+ vm.runInContext('answerCompetencyQuestion(i,deck[i].answer)',c);assert.equal(vm.runInContext('i',c),1);
+ spoken[0].onend();assert.equal(vm.runInContext('assessmentAudio.heard',c),false);
+});
+test('teacher-led speaking and mediation tasks never invent an automatic score',async()=>{
+ const submissions=[];const c=setup(async(url,init)=>{if(url.endsWith('resolve_code_v2'))return response({ok:true,first_name:'Alex'});submissions.push(JSON.parse(init.body));return response({saved:true})},'',supplementary);
+ await authenticate(c);
+ for(const id of ['u4-speaking','u4-mediation']){await vm.runInContext("startAssessment('"+id+"')",c);assert.match(c.document.querySelector().innerHTML,/Bewertung durch die Lehrkraft/);assert.match(c.document.querySelector().innerHTML,/Darauf achtet die Lehrkraft/);assert.equal(c.link.attempt,null)}
+ assert.equal(submissions.length,0);
+});
+test('an unsupported audio device cannot start a listening attempt',async()=>{
+ const c=setup(async()=>response({ok:true,first_name:'Alex'}),'',supplementary);await authenticate(c);await vm.runInContext("startAssessment('u4-listening')",c);
+ assert.equal(c.link.attempt,null);assert.match(c.document.querySelector().innerHTML,/Hörtexte nicht abspielen/);
 });

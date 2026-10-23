@@ -69,9 +69,9 @@ const PracticeLink = {
       this.state = 'error'; this.message = 'Dieser QR-Code ist ungültig. Bitte deinen persönlichen QR-Code scannen.';
       return this.paint();
     }
-    this.retiredPractice = Array.isArray(pending) && pending.some(p => p?.p_token === code && !/^vocab:lwl-/.test(p.p_task_key || ''));
+    this.retiredPractice = Array.isArray(pending) && pending.some(p => p?.p_token === code && !/^(?:vocab|assessment):lwl-/.test(p.p_task_key || ''));
     this.candidate = code; this.state = 'pin'; this.last = Date.now();
-    this.waitingPending = Array.isArray(pending) ? pending.filter(p => p?.p_token === code && /^vocab:lwl-/.test(p.p_task_key || '')).slice(-30) : [];
+    this.waitingPending = Array.isArray(pending) ? pending.filter(p => p?.p_token === code && /^(?:vocab|assessment):lwl-/.test(p.p_task_key || '')).slice(-30) : [];
     this.persist(); this.paint();
   },
   async login(pinValue) {
