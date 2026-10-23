@@ -5,6 +5,7 @@ const PracticeLink = {
   storageKey: 'ep-kompass-session', idleMs: 30 * 60 * 1000,
   token: null, pin: null, waitingPending: [], candidate: null, name: '', active: false, last: 0,
   pending: [], attempt: null, state: 'guest', message: '', flushing: false, generation: 0,
+  retiredPractice: false,
   initialCode: new URLSearchParams(location.hash.slice(1)).get('code'),
   capture() {
     if (this.initialCode !== null) history.replaceState(null, '', location.pathname + location.search);
@@ -32,7 +33,7 @@ const PracticeLink = {
   },
   reset() {
     this.generation++; this.token = null; this.pin = null; this.waitingPending = []; this.candidate = null; this.name = ''; this.active = false;
-    this.pending = []; this.attempt = null; this.state = 'guest'; this.message = '';
+    this.pending = []; this.attempt = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;
     try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
     this.paint();
   },
@@ -67,8 +68,9 @@ const PracticeLink = {
       this.state = 'error'; this.message = 'Dieser QR-Code ist ungültig. Bitte deinen persönlichen QR-Code scannen.';
       return this.paint();
     }
+    this.retiredPractice = Array.isArray(pending) && pending.some(p => p?.p_token === code && !/^vocab:lwl-/.test(p.p_task_key || ''));
     this.candidate = code; this.state = 'pin'; this.last = Date.now();
-    this.waitingPending = Array.isArray(pending) ? pending.filter(p => p?.p_token === code).slice(-30) : [];
+    this.waitingPending = Array.isArray(pending) ? pending.filter(p => p?.p_token === code && /^vocab:lwl-/.test(p.p_task_key || '')).slice(-30) : [];
     this.persist(); this.paint();
   },
   async login(pinValue) {
@@ -99,6 +101,7 @@ const PracticeLink = {
     if (this.state !== 'confirm' || !this.token) return;
     this.active = true; this.state = 'active'; this.last = Date.now(); this.persist();
     this.paint(); this.flush();
+    if (location.hash.startsWith('#assessment-') && typeof assessmentOptions === 'function') assessmentOptions(location.hash.slice(12));
   },
   enterCode() {
     if (this.active && !confirm('Mit einem anderen Übungscode fortfahren? Bitte zuerst alle Testergebnisse übertragen.')) return;
@@ -109,8 +112,8 @@ const PracticeLink = {
     const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Übungslink eingeben</button>';
     if (this.state === 'pin') return `<div class="practice-link"><form onsubmit="event.preventDefault();PracticeLink.login()"><label for="practice-pin"><b>Deine persönliche PIN</b></label><p>Gib die sechs Ziffern von deiner Zugangskarte ein.</p><input id="practice-pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" aria-describedby="practice-pin-error" style="width:160px;font-size:1.2rem;padding:10px;border:1px solid #d4bfc3;border-radius:8px"><button class="btn" type="submit">Anmelden</button><p id="practice-pin-error" role="status">${this.escape(this.message)}</p></form><button class="btn secondary" onclick="PracticeLink.reset()">Ohne Anmeldung üben</button></div>`;
     if (this.state === 'checking') return '<div class="practice-link" role="status">Dein Übungscode wird geprüft …</div>';
-    if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p>Deine abgeschlossenen Vokabeltests werden für deine Lehrkraft in KOMPASS gespeichert.</p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
-    if (this.active) return `<div class="practice-link" role="status"><b>Hallo ${this.escape(this.name)}!</b> Deine Vokabeltests werden in KOMPASS gespeichert.${this.pending.length ? `<p>${this.pending.length} Ergebnis(se) warten auf Übertragung. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button></p>` : ''}</div>`;
+    if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p>Nur die Tests unter „Tests laut Lernwegeliste“ werden in KOMPASS gespeichert. Übungen bleiben Übungen.</p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
+    if (this.active) return `<div class="practice-link" role="status"><b>Hallo ${this.escape(this.name)}!</b> Nur „Tests laut Lernwegeliste“ werden in KOMPASS gespeichert. Übungen werden nicht übertragen.${this.retiredPractice ? '<p>Die vorherige ausstehende Runde war ein Selbstcheck und wurde deshalb nicht als Test übernommen.</p>' : ''}${this.message ? `<p>${this.escape(this.message)}</p>` : ''}${this.pending.length ? `<p>${this.pending.length} Ergebnis(se) warten auf Übertragung. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button></p>` : ''}</div>`;
     if (this.state === 'error') return `<div class="practice-link" role="status">${this.escape(this.message)} ${this.candidate ? '<button class="btn secondary" onclick="PracticeLink.connect(PracticeLink.candidate)">Erneut prüfen</button>' : ''} ${button}</div>`;
     return `<div class="practice-link"><span>Üben ohne Code · Testergebnisse werden nicht an die Lehrkraft übertragen.</span> ${button}</div>`;
   },
@@ -172,7 +175,7 @@ const PracticeLink = {
           const r = await this.rpc('kompass_english_submit_result_v3', {...payload,p_pin:this.pin});
           if (generation !== this.generation) break;
           if (!r.saved) {
-            if (r.window_closed) {
+            if (r.window_closed || r.practice_only || r.update_required) {
               this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
               if (this.attempt?.id === payload.p_attempt_id) { this.attempt.status = 'failed'; this.message = r.message; }
               this.persist(); this.paint(); continue;
@@ -185,8 +188,12 @@ const PracticeLink = {
           this.persist(); this.paint();
         } catch (e) {
           if (generation !== this.generation) break;
-          if (e.status === 400 && e.code === 'P0001' && this.attempt?.id === payload.p_attempt_id)
-            this.attempt.status = 'failed';
+          if (e.status >= 400 && e.status < 500) {
+            this.message = [401,403,404].includes(e.status) || e.code === 'PGRST202' ? 'Diese Seitenversion kann nicht mehr übertragen. Bitte Seite neu laden und QR-Code / PIN erneut öffnen.' : (e.message || 'Ergebnis abgelehnt. Bitte deine Lehrkraft fragen.');
+            this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
+            if(this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
+            this.persist();
+          }
           this.paint(); break;
         }
       }
