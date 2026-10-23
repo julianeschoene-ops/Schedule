@@ -20,7 +20,7 @@ function setup(fetch, hash = '', testCatalog = catalog) {
     location:{hash,pathname:'/Schedule/',search:''},
     history:{replaceState(_a,_b,url){c.location.hash='';c.lastUrl=url;}},
     document:{querySelector:()=>app,getElementById:()=>null,querySelectorAll:()=>[],addEventListener(){}},
-    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>url.endsWith('kompass_english_test_window')?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:testCatalog})):fetch(url,init),
+    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>(/kompass_english_(?:test_window|access_window)$/.test(url))?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:testCatalog})):fetch(url,init),
     setInterval(){},setTimeout,clearTimeout,confirm:()=>true,alert(){},prompt:()=>null,
     addEventListener(){},
     VOCAB:{'16':{unit:4,number:16,title:'shop – now',words:Array.from({length:23},(_,n)=>['word'+n,'Wort'+n])},'17':{unit:4,number:17,title:'way – by (bike)',words:Array.from({length:50},(_,n)=>['word'+n,'Wort'+n])},u1:{unit:1,number:1,title:'School',words:Array.from({length:10},(_,n)=>['word'+n,'Wort'+n])}}
@@ -207,4 +207,18 @@ test('teacher-led speaking and mediation tasks never invent an automatic score',
 test('an unsupported audio device cannot start a listening attempt',async()=>{
  const c=setup(async()=>response({ok:true,first_name:'Alex'}),'',supplementary);await authenticate(c);await vm.runInContext("startAssessment('u4-listening')",c);
  assert.equal(c.link.attempt,null);assert.match(c.document.querySelector().innerHTML,/Hörtexte nicht abspielen/);
+});
+
+test('personal demo access is queried with PIN only after name confirmation',async()=>{
+ const calls=[];const c=setup(async()=>response({ok:true,first_name:'Alex'}));
+ c.fetch=async(url,init)=>{calls.push({url,payload:JSON.parse(init.body)});return response({open:true,demo_access:true,closes_at:'2026-10-25T23:00:00Z',server_now:'2026-10-23T20:00:00Z'})};
+ await c.link.testWindow();assert.ok(calls[0].url.endsWith('test_window'));assert.equal(calls[0].payload.p_pin,undefined);
+ c.link.token=code;c.link.pin='123456';c.link.active=true;
+ await c.link.testWindow();assert.ok(calls[1].url.endsWith('access_window'));assert.equal(calls[1].payload.p_pin,'123456');assert.equal(c.link.windowInfo.demo_access,true);
+ c.link.reset();assert.equal(c.link.windowInfo,null);
+});
+test('a late personal access response after logout cannot restore demo access',async()=>{
+ let resolve;const c=setup(async()=>response({ok:true,first_name:'Alex'}));await authenticate(c);
+ c.fetch=()=>new Promise(r=>resolve=r);const pending=c.link.testWindow();c.link.reset();resolve(response({open:true,demo_access:true}));
+ assert.equal(await pending,null);assert.equal(c.link.windowInfo,null);
 });

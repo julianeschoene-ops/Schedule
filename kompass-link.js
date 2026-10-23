@@ -33,7 +33,7 @@ const PracticeLink = {
   },
   reset() {
     this.generation++; this.token = null; this.pin = null; this.waitingPending = []; this.candidate = null; this.name = ''; this.active = false;
-    this.pending = []; this.attempt = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;
+    this.pending = []; this.attempt = null; this.windowInfo = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;
     try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
     if (typeof clearAssessmentAccess === 'function') clearAssessmentAccess();
     this.paint();
@@ -127,7 +127,9 @@ const PracticeLink = {
   },
   async testWindow() {
     try {
-      const info = await this.rpc('kompass_english_test_window', {});
+      const generation=this.generation,personal=Boolean(this.active&&this.token&&this.pin),token=this.token;
+      const info = await this.rpc(personal?'kompass_english_access_window':'kompass_english_test_window',personal?{p_token:this.token,p_pin:this.pin}:{});
+      if(generation!==this.generation||personal!==Boolean(this.active&&this.token&&this.pin)||(personal&&token!==this.token))return null;
       this.windowInfo = info;
       if (typeof armTestGate === 'function') armTestGate(info);
       return info;
