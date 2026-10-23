@@ -12,17 +12,20 @@ function storage() {
     ownKeys:()=>Object.keys(data),getOwnPropertyDescriptor:()=>({enumerable:true,configurable:true})
   });
 }
+const catalog=[{id:'u4-test-1',task_key:'vocab:lwl-u4-test-1',unit:4,title:'Vocabulary Test 1',source:'LWL · Station 1 · Aufgabe 2a',list:'16',range:'shop – now',question_count:23,competency_id:'eng5_5',competency_text:'Ich kann Orts- und Zeitangaben verstehen und richtig benutzen.',competency_area:'Sprachliche Mittel – Wortschatz',scope:'Wortschatz-Teilnachweis'},
+{id:'u4-test-2',task_key:'vocab:lwl-u4-test-2',unit:4,title:'Vocabulary Test 2',source:'LWL · Station 2 · Aufgabe 3a',list:'17',range:'way – by (bike)',question_count:50,competency_id:'eng5_5',competency_text:'Ich kann Orts- und Zeitangaben verstehen und richtig benutzen.',competency_area:'Sprachliche Mittel – Wortschatz',scope:'Wortschatz-Teilnachweis'}];
 function setup(fetch, hash = '') {
   const app = {innerHTML:''}, c = {
     console,URLSearchParams,AbortController,crypto:webcrypto,Date:class extends Date {},
     location:{hash,pathname:'/Schedule/',search:''},
     history:{replaceState(_a,_b,url){c.location.hash='';c.lastUrl=url;}},
     document:{querySelector:()=>app,getElementById:()=>null,querySelectorAll:()=>[],addEventListener(){}},
-    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>url.endsWith('kompass_english_test_window')?Promise.resolve(response({open:true,test_date:'2026-10-23'})):fetch(url,init),
+    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>url.endsWith('kompass_english_test_window')?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:catalog})):fetch(url,init),
     setInterval(){},setTimeout,clearTimeout,confirm:()=>true,alert(){},prompt:()=>null,
     addEventListener(){},
     VOCAB:{'16':{unit:4,number:16,title:'shop – now',words:Array.from({length:23},(_,n)=>['word'+n,'Wort'+n])},'17':{unit:4,number:17,title:'way – by (bike)',words:Array.from({length:50},(_,n)=>['word'+n,'Wort'+n])},u1:{unit:1,number:1,title:'School',words:Array.from({length:10},(_,n)=>['word'+n,'Wort'+n])}}
   };
+  let currentHash=hash;Object.defineProperty(c.location,'hash',{get:()=>currentHash,set:v=>currentHash=v&&!v.startsWith('#')?'#'+v:v});
   c.window = c;
   vm.createContext(c);
   vm.runInContext(fs.readFileSync(path.join(root,'kompass-link.js'),'utf8')+'\nglobalThis.link=PracticeLink;',c);
@@ -116,12 +119,12 @@ test('ordinary selfchecks stay available outside test time and never submit',asy
   await tick();assert.equal(calls,0);assert.equal(c.link.attempt,null);assert.equal(c.link.pending.length,0);
   assert.match(c.document.querySelector().innerHTML,/Kein Ergebnis an KOMPASS/);
 });
-test('Unit 4 exposes only the two explicitly marked LWL tests',()=>{
- const c=setup(async()=>response({}));const html=vm.runInContext('lwlTestCards(4)',c);
+test('the protected test area shows only tests with their exact competency',async()=>{
+ const c=setup(async()=>response({ok:true,first_name:'Alex'}));await c.link.connect(code);await c.link.login('123456');c.link.confirm();await vm.runInContext('assessments()',c);const html=c.document.querySelector().innerHTML;
  assert.match(html,/Vocabulary Test 1/);assert.match(html,/Vocabulary Test 2/);
  assert.match(html,/Aufgabe 2a/);assert.match(html,/Aufgabe 3a/);
  assert.match(html,/shop – now/);assert.match(html,/way – by/);
- assert.equal((html.match(/Zum Test/g)||[]).length,2);
+ assert.equal((html.match(/Zum Test/g)||[]).length,2);assert.match(html,/Orts- und Zeitangaben/);assert.match(html,/Wortschatz-Teilnachweis/);assert.ok(!html.includes('Vocabulary lists'));assert.ok(!html.includes('Coming soon'));
 });
 test('obsolete practice payloads are never restored as assessment results',async()=>{
  const c=setup(async()=>response({}));await c.link.connect(code,[{p_token:code,p_task_key:'vocab:16'},{p_token:code,p_task_key:'vocab:lwl-u4-test-1'}]);
@@ -147,4 +150,29 @@ test('formal tests require identity and never reveal answers during the round',a
  assert.match(html,/Deutsch → Englisch/);assert.match(html,/spellcheck="false"/);
  assert.ok(!html.includes('checkTyped'));assert.ok(!html.includes('Show answer'));assert.ok(!html.includes('Correct!'));
  vm.runInContext('i=22;renderQ()',c);assert.match(c.document.querySelector().innerHTML,/Test abgeben/);
+});
+
+test('closed hours hide the entire catalog including direct test links',async()=>{
+ const c=setup(async()=>response({ok:true,first_name:'Alex'}));let catalogs=0;
+ c.fetch=async url=>{if(url.endsWith('test_catalog'))catalogs++;return response({open:false,reason:'school_closed',message:'Herbstferien: Testbereich geschlossen.'})};
+ await vm.runInContext('assessments()',c);
+ assert.match(c.document.querySelector().innerHTML,/Herbstferien/);assert.ok(!c.document.querySelector().innerHTML.includes('Vocabulary Test 1'));
+ await vm.runInContext("assessmentOptions('u4-test-1')",c);
+ assert.match(c.document.querySelector().innerHTML,/Herbstferien/);assert.ok(!c.document.querySelector().innerHTML.includes('Test starten'));assert.equal(catalogs,0);
+});
+test('opening hours alone do not reveal tests without confirmed QR and PIN',async()=>{
+ const c=setup(async()=>response({}));await vm.runInContext('assessments()',c);
+ const html=c.document.querySelector().innerHTML;assert.match(html,/persönlichen QR-Code/);assert.ok(!html.includes('Vocabulary Test 1'));
+});
+test('the closing timer uses server duration and removes an unfinished test',async()=>{
+ const c=setup(async()=>response({ok:true,first_name:'Alex'}));await c.link.connect(code);await c.link.login('123456');c.link.confirm();
+ c.location.hash='#assessment-u4-test-1';await vm.runInContext("startAssessment('u4-test-1')",c);
+ const timers=[];c.setTimeout=(fn,ms)=>{timers.push({fn,ms});return {unref(){}}};
+ vm.runInContext("Date.now=()=>0;armTestGate({open:true,server_now:'2026-10-23T10:29:50Z',closes_at:'2026-10-23T10:30:00Z'})",c);
+ assert.equal(timers[0].ms,10000);timers[0].fn();
+ assert.equal(c.link.attempt.status,'failed');assert.equal(c.link.pending.length,0);assert.match(c.document.querySelector().innerHTML,/12:30/);assert.ok(!c.document.querySelector().innerHTML.includes('Englische Übersetzung'));
+});
+test('a closing test timer does not interrupt practice after leaving the area',()=>{
+ const c=setup(async()=>response({}));vm.runInContext("current='u1';start('de-en')",c);c.location.hash='#list-u1';const html=c.document.querySelector().innerHTML;
+ vm.runInContext("closeTestArea('closed')",c);assert.equal(c.document.querySelector().innerHTML,html);assert.equal(vm.runInContext('mode',c),'de-en');
 });
