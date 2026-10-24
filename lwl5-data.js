@@ -1031,7 +1031,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "seasons",
    "note": ""
   },
   "list-2": {
@@ -1048,7 +1048,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "dates",
    "note": ""
   },
   "list-3": {
@@ -1065,7 +1065,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "dates",
    "note": ""
   },
   "list-4": {
@@ -1082,7 +1082,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "pancakes",
    "note": ""
   },
   "list-5": {
@@ -1099,7 +1099,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "weather",
    "note": ""
   },
   "list-6": {
@@ -1116,7 +1116,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "camping",
    "note": ""
   },
   "list-7": {
@@ -1133,7 +1133,7 @@ const LWL5_DATA={
    "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
    "level": "G/M/E",
    "kind": "model",
-   "practice": "words",
+   "practice": "robin",
    "note": ""
   }
  },
@@ -1424,6 +1424,102 @@ const LWL5_DATA={
     ],
     "answer": 2,
     "why": "Du hörst „It was sunny and warm“."
+   }
+  ],
+  "weather": [
+   {
+    "q": "Welches Wort beschreibt windiges Wetter?",
+    "options": [
+     "windy",
+     "window",
+     "winter"
+    ],
+    "answer": 0,
+    "why": "windy ist das Adjektiv zu wind."
+   },
+   {
+    "q": "Was bedeutet „cloudy“?",
+    "options": [
+     "sonnig",
+     "bewölkt",
+     "heiß"
+    ],
+    "answer": 1,
+    "why": "cloud ist die Wolke, cloudy bedeutet bewölkt."
+   },
+   {
+    "q": "Welcher Satz ist richtig?",
+    "options": [
+     "The weather were sunny.",
+     "It are sunny.",
+     "It is sunny and warm."
+    ],
+    "answer": 2,
+    "why": "Für das Wetter sagst du hier it is."
+   }
+  ],
+  "camping": [
+   {
+    "q": "Wo schläfst du beim Camping oft?",
+    "options": [
+     "In a tent.",
+     "In an interview.",
+     "In an arrow."
+    ],
+    "answer": 0,
+    "why": "tent bedeutet Zelt."
+   },
+   {
+    "q": "Was ist ein „mountain“?",
+    "options": [
+     "ein Bach",
+     "ein Berg",
+     "ein Wald"
+    ],
+    "answer": 1,
+    "why": "mountain bedeutet Berg."
+   },
+   {
+    "q": "Welches Stichwort hilft bei der Frage „When“?",
+    "options": [
+     "ein Datum",
+     "eine Farbe",
+     "ein Tier"
+    ],
+    "answer": 0,
+    "why": "When fragt nach der Zeit, zum Beispiel einem Datum."
+   }
+  ],
+  "robin": [
+   {
+    "q": "Was bedeutet „forest“?",
+    "options": [
+     "Fest",
+     "Pfeil",
+     "Wald"
+    ],
+    "answer": 2,
+    "why": "forest bedeutet Wald."
+   },
+   {
+    "q": "Was bedeutet „arrow“?",
+    "options": [
+     "Pfeil",
+     "Zelt",
+     "Kuchen"
+    ],
+    "answer": 0,
+    "why": "arrow bedeutet Pfeil."
+   },
+   {
+    "q": "Wie heißt die Mehrzahl von „man“?",
+    "options": [
+     "mans",
+     "men",
+     "man’s"
+    ],
+    "answer": 1,
+    "why": "Die Mehrzahl von man ist unregelmäßig: men."
    }
   ]
  }
