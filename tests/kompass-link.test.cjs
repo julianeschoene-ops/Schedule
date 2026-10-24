@@ -32,6 +32,8 @@ function setup(fetch, hash = '', testCatalog = catalog) {
   vm.runInContext(fs.readFileSync(path.join(root,'answer-check.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(root,'vocab-test.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(root,'test-history.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(root,'lwl5-data.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(root,'lwl-guide.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),c);
   return c;
 }
@@ -281,3 +283,5 @@ test('a code-and-symbol response after reset cannot sign in the next child',asyn
 test('reload asks for the symbol again and restores pending results only for the matching pupil',async()=>{
  const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}));c.sessionStorage.setItem(c.link.storageKey,JSON.stringify({token:code,shortCode:'4837',last:Date.now(),pending:[{p_token:code,p_task_key:'vocab:lwl-u4-test-1',p_attempt_id:'own'},{p_token:'b'.repeat(64),p_task_key:'vocab:lwl-u4-test-1',p_attempt_id:'foreign'}]}));await c.link.boot();assert.equal(c.link.state,'access');assert.equal(c.link.entryCode,'4837');assert.equal(c.link.selectedSymbol,'');await c.link.signIn('4837','fox');assert.equal(c.link.pending.length,1);assert.equal(c.link.pending[0].p_attempt_id,'own');c.link.reset();assert.equal(c.link.entryCode,'');assert.equal(c.link.selectedSymbol,'');
 });
+
+test('a direct LWL exercise link survives initial page load and remains open without a login',async()=>{const c=setup(async()=>response({}),'#lwl5-2d-wb71-11');assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.match(c.document.querySelector().innerHTML,/WB S. 71/);await c.link.boot();assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.equal(c.link.active,false);assert.equal(vm.runInContext('mode',c),null);});
