@@ -112,14 +112,15 @@ const PracticeLink = {
     if (this.state !== 'confirm' || !this.token) return;
     this.active = true; this.state = 'active'; this.last = Date.now(); this.persist();
     this.paint(); this.flush();
-    if(location.hash==='#test-history'&&typeof TestHistory!=='undefined')TestHistory.open();
+    if(location.hash==='#practice-summary'&&typeof PracticeJournal!=='undefined')PracticeJournal.render();
+    else if(location.hash==='#test-history'&&typeof TestHistory!=='undefined')TestHistory.open();
     else if(location.hash.startsWith('#test-result-')&&typeof TestHistory!=='undefined')TestHistory.detail(location.hash.slice(13));
     else if (location.hash.startsWith('#assessment-') && typeof assessmentOptions === 'function') assessmentOptions(location.hash.slice(12));
     else if (location.hash === '#tests' && typeof assessments === 'function') assessments();
   },
   enterCode() {
     if(this.active&&!this.canEnd())return;
-    if(typeof clearPracticeData==='function')clearPracticeData();this.reset();this.state='access';this.paint();
+    if(location.hash!=='#practice-summary'&&typeof clearPracticeData==='function')clearPracticeData();this.reset();this.state='access';this.paint();
   },
   markup() {
     const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Mit Code anmelden</button>';
