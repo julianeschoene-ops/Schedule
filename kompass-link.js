@@ -32,6 +32,7 @@ const PracticeLink = {
     } finally { clearTimeout(timer); }
   },
   reset() {
+    if(typeof TestFocus!=='undefined')TestFocus.stop();
     this.generation++; this.token = null; this.pin = null; this.waitingPending = []; this.candidate = null; this.name = ''; this.active = false;
     this.pending = []; this.attempt = null; this.windowInfo = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;
     try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
@@ -152,6 +153,7 @@ const PracticeLink = {
     }
     if (!this.active && !confirm('Du übst ohne persönlichen Code. Dieser Test wird nicht an deine Lehrkraft übertragen. Trotzdem starten?')) return false;
     this.attempt = {id:crypto.randomUUID(),token:this.active ? this.token : null,taskKey,topic,testDate:this.windowInfo?.test_date,status:'started'};
+    if(typeof TestFocus!=='undefined')TestFocus.start(this.attempt.id);
     return true;
   },
   finishTest(points, max) {
@@ -161,13 +163,14 @@ const PracticeLink = {
     if (this.attempt !== a) return;
     if (!a.token || !this.active || a.token !== this.token) { a.status = 'guest'; return; }
     a.status = 'pending';
-    this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max,p_test_date:a.testDate});
+    this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max,p_test_date:a.testDate,interruptions:typeof TestFocus!=='undefined'?TestFocus.snapshot():{count:0}});
+    if(typeof TestFocus!=='undefined')TestFocus.stop();
     this.persist(); this.flush();
   },
   finishVocab(answers) {
     const a=this.attempt;if(!a||a.status!=='started')return;this.touch();if(this.attempt!==a||!this.active||a.token!==this.token)return;
     a.status='pending';
-    this.pending.push({protocol:'vocab_lnw',p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_answers:answers});this.persist();this.flush();
+    this.pending.push({protocol:'vocab_lnw',p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_answers:answers,interruptions:typeof TestFocus!=='undefined'?TestFocus.snapshot():{count:0}});if(typeof TestFocus!=='undefined')TestFocus.stop();this.persist();this.flush();
   },
   resultMarkup() {
     const a = this.attempt;
@@ -186,7 +189,8 @@ const PracticeLink = {
       for (const payload of [...this.pending]) {
         if (generation !== this.generation || !this.active || payload.p_token !== token) break;
         try {
-          const r = payload.protocol==='vocab_lnw'?await this.rpc('kompass_english_submit_vocab',{p_token:payload.p_token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_answers:payload.p_answers}):await this.rpc('kompass_english_submit_result_v3', {...payload,p_pin:this.pin});
+          const {interruptions,...submission}=payload;
+          const r = payload.protocol==='vocab_lnw'?await this.rpc('kompass_english_submit_vocab',{p_token:payload.p_token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_answers:payload.p_answers}):await this.rpc('kompass_english_submit_result_v3', {...submission,p_pin:this.pin});
           if (generation !== this.generation) break;
           if (!r.saved) {
             if (r.window_closed || r.practice_only || r.update_required) {
@@ -197,6 +201,7 @@ const PracticeLink = {
             if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
             this.message = r.message || 'Speicherung nicht bestätigt.'; this.paint(); break;
           }
+          if(interruptions?.count>0){const report=await this.rpc('kompass_english_report_interruptions',{p_token:token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_count:interruptions.count});if(generation!==this.generation)break;if(!report.ok)throw new Error(report.message||'Unterbrechungsvermerk konnte nicht gespeichert werden.');}
           this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
           if (this.attempt?.id === payload.p_attempt_id){this.attempt.status = 'saved';if(r.needs_review!==undefined)this.attempt.needsReview=r.needs_review;if(payload.protocol==='vocab_lnw')this.attempt.outcome=r;}
           this.persist(); this.paint();
