@@ -35,6 +35,7 @@ const PracticeLink = {
     this.generation++; this.token = null; this.pin = null; this.waitingPending = []; this.candidate = null; this.name = ''; this.active = false;
     this.pending = []; this.attempt = null; this.windowInfo = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;
     try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
+    if(typeof TestHistory!=='undefined')TestHistory.reset();
     if (typeof clearAssessmentAccess === 'function') clearAssessmentAccess();
     this.paint();
   },
@@ -102,7 +103,9 @@ const PracticeLink = {
     if (this.state !== 'confirm' || !this.token) return;
     this.active = true; this.state = 'active'; this.last = Date.now(); this.persist();
     this.paint(); this.flush();
-    if (location.hash.startsWith('#assessment-') && typeof assessmentOptions === 'function') assessmentOptions(location.hash.slice(12));
+    if(location.hash==='#test-history'&&typeof TestHistory!=='undefined')TestHistory.open();
+    else if(location.hash.startsWith('#test-result-')&&typeof TestHistory!=='undefined')TestHistory.detail(location.hash.slice(13));
+    else if (location.hash.startsWith('#assessment-') && typeof assessmentOptions === 'function') assessmentOptions(location.hash.slice(12));
     else if (location.hash === '#tests' && typeof assessments === 'function') assessments();
   },
   enterCode() {
@@ -114,10 +117,10 @@ const PracticeLink = {
     const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Übungslink eingeben</button>';
     if (this.state === 'pin') return `<div class="practice-link"><form onsubmit="event.preventDefault();PracticeLink.login()"><label for="practice-pin"><b>Deine persönliche PIN</b></label><p>Gib die sechs Ziffern von deiner Zugangskarte ein.</p><input id="practice-pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" aria-describedby="practice-pin-error" style="width:160px;font-size:1.2rem;padding:10px;border:1px solid #d4bfc3;border-radius:8px"><button class="btn" type="submit">Anmelden</button><p id="practice-pin-error" role="status">${this.escape(this.message)}</p></form><button class="btn secondary" onclick="PracticeLink.reset()">Ohne Anmeldung üben</button></div>`;
     if (this.state === 'checking') return '<div class="practice-link" role="status">Dein Übungscode wird geprüft …</div>';
-    if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p>Nur abgeschlossene Tests aus dem Testbereich werden in KOMPASS gespeichert. Übungen bleiben Übungen.</p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
-    if (this.active) return `<div class="practice-link" role="status"><b>Hallo ${this.escape(this.name)}!</b> Nur Tests aus dem Testbereich werden in KOMPASS gespeichert. Übungen werden nicht übertragen.${this.retiredPractice ? '<p>Die vorherige ausstehende Runde war ein Selbstcheck und wurde deshalb nicht als Test übernommen.</p>' : ''}${this.message ? `<p>${this.escape(this.message)}</p>` : ''}${this.pending.length ? `<p>${this.pending.length} Ergebnis(se) warten auf Übertragung. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button></p>` : ''}</div>`;
+    if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p></p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
+    if (this.active) return `<div class="practice-link" role="status"><b>Hallo ${this.escape(this.name)}!</b> ${this.retiredPractice ? '<p>Die vorherige ausstehende Runde war ein Selbstcheck und wurde deshalb nicht als Test übernommen.</p>' : ''}${this.message ? `<p>${this.escape(this.message)}</p>` : ''}${this.pending.length ? `<p>${this.pending.length} Ergebnis(se) warten auf Übertragung. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button></p>` : ''}</div>`;
     if (this.state === 'error') return `<div class="practice-link" role="status">${this.escape(this.message)} ${this.candidate ? '<button class="btn secondary" onclick="PracticeLink.connect(PracticeLink.candidate)">Erneut prüfen</button>' : ''} ${button}</div>`;
-    return `<div class="practice-link"><span>Üben ohne Code · Testergebnisse werden nicht an die Lehrkraft übertragen.</span> ${button}</div>`;
+    return `<div class="practice-link"><span>Du kannst sofort üben. Für Tests melde dich mit deinem QR-Code an.</span> ${button}</div>`;
   },
   paint() {
     const target = document.getElementById('practice-connection');
@@ -169,7 +172,7 @@ const PracticeLink = {
   resultMarkup() {
     const a = this.attempt;
     if (!a || a.status === 'guest' || !a.token) return 'Ohne persönlichen Code: Dieses Ergebnis wurde nicht an KOMPASS übertragen.';
-    if (a.status === 'saved') return '✓ Dein Testergebnis wurde bei deiner Englischkompetenz in KOMPASS gespeichert.'+(a.needsReview?' Satzvarianten warten auf Lehrkraftprüfung; dieses Ergebnis ist vorläufig.':'');
+    if (a.status === 'saved') return '✓ Dein Ergebnis ist gespeichert.'+(a.needsReview?' Eine Antwort wird noch geprüft.':'');
     if (a.status === 'failed') return this.escape(this.message || 'Dieses Ergebnis konnte nicht gespeichert werden. Bitte deine Lehrkraft fragen.');
     return 'Dein Ergebnis wartet auf Übertragung. Bitte diese Seite offen lassen. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button>';
   },

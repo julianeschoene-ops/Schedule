@@ -31,6 +31,7 @@ function setup(fetch, hash = '', testCatalog = catalog) {
   vm.runInContext(fs.readFileSync(path.join(root,'kompass-link.js'),'utf8')+'\nglobalThis.link=PracticeLink;',c);
   vm.runInContext(fs.readFileSync(path.join(root,'answer-check.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(root,'vocab-test.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(root,'test-history.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),c);
   return c;
 }
@@ -125,8 +126,8 @@ test('the protected test area shows only tests with their exact competency',asyn
  const c=setup(async()=>response({ok:true,first_name:'Alex'}));await c.link.connect(code);await c.link.login('123456');c.link.confirm();await vm.runInContext('assessments()',c);const html=c.document.querySelector().innerHTML;
  assert.match(html,/Vocabulary Test 1/);assert.match(html,/Vocabulary Test 2/);
  assert.match(html,/Aufgabe 2a/);assert.match(html,/Aufgabe 3a/);
- assert.match(html,/shop – now/);assert.match(html,/way – by/);
- assert.equal((html.match(/Zum Test/g)||[]).length,2);assert.match(html,/Orts- und Zeitangaben/);assert.match(html,/Wortschatz-Teilnachweis/);assert.ok(!html.includes('Vocabulary lists'));assert.ok(!html.includes('Coming soon'));
+ assert.equal(vm.runInContext("assessmentCatalog.every(t=>t.competency_id==='eng5_5')",c),true);
+ assert.equal((html.match(/Zum Test/g)||[]).length,2);assert.doesNotMatch(html,/Wortschatz-Teilnachweis/);assert.ok(!html.includes('Vocabulary lists'));assert.ok(!html.includes('Coming soon'));
 });
 test('obsolete practice payloads are never restored as assessment results',async()=>{
  const c=setup(async()=>response({}));await c.link.connect(code,[{p_token:code,p_task_key:'vocab:16'},{p_token:code,p_task_key:'vocab:lwl-u4-test-1'}]);
@@ -203,7 +204,7 @@ test('listening hides transcripts, requires hearing audio and allows at most two
 test('teacher-led speaking and mediation tasks never invent an automatic score',async()=>{
  const submissions=[];const c=setup(async(url,init)=>{if(url.endsWith('resolve_code_v2'))return response({ok:true,first_name:'Alex'});submissions.push(JSON.parse(init.body));return response({saved:true})},'',supplementary);
  await authenticate(c);
- for(const id of ['u4-speaking','u4-mediation']){await vm.runInContext("startAssessment('"+id+"')",c);assert.match(c.document.querySelector().innerHTML,/Bewertung durch die Lehrkraft/);assert.match(c.document.querySelector().innerHTML,/Darauf achtet die Lehrkraft/);assert.equal(c.link.attempt,null)}
+ for(const id of ['u4-speaking','u4-mediation']){await vm.runInContext("startAssessment('"+id+"')",c);assert.doesNotMatch(c.document.querySelector().innerHTML,/Darauf achtet die Lehrkraft|Aufgabe mit Lehrkraft/);assert.equal(c.link.attempt,null)}
  assert.equal(submissions.length,0);
 });
 test('an unsupported audio device cannot start a listening attempt',async()=>{
@@ -238,16 +239,30 @@ test('new vocabulary tests receive no answer key and use the server result only'
  vm.runInContext("AnswerCheck.word=()=>{throw new Error('Test must be marked on server')};for(let n=0;n<23;n++)VocabTest.answer(false)",c);
  await tick();await tick();assert.equal(sent.length,1);assert.ok(sent[0].url.endsWith('submit_vocab'));
  assert.equal(sent[0].body.p_answers.length,23);assert.equal(sent[0].body.p_answers[0].points,undefined);assert.equal(sent[0].body.p_points,undefined);
- assert.equal(c.link.attempt.status,'saved');assert.match(summary.innerHTML,/30\/52/);assert.match(summary.innerHTML,/Niveau G/);assert.match(summary.innerHTML,/Grün/);assert.match(summary.innerHTML,/Vorläufig/);
+ assert.equal(c.link.attempt.status,'saved');assert.match(summary.innerHTML,/30\/52/);assert.match(summary.innerHTML,/Niveau G/);assert.match(summary.innerHTML,/Erreicht/);assert.match(summary.innerHTML,/vorläufig/);
 });
-test('home exposes a prominent test destination before the illustration',()=>{
+test('home has one introduction and clear practice, tests and history navigation',()=>{
  const c=setup(async()=>response({}));const html=c.document.querySelector().innerHTML;
- assert.ok(html.includes('entry-switch'));assert.ok(html.indexOf('Zum Testbereich')<html.indexOf('hero home-hero'));
+ assert.ok(html.includes('home-actions'));assert.equal((html.match(/Zum Testbereich/g)||[]).length,1);assert.ok(html.includes('Meine Tests'));assert.ok(!html.includes('G / M / E ermitteln'));
 });
 
 test('common test introduction removes self-selection and explains the 15/5/3 structure',async()=>{
  const task={...catalog[0],differentiated:true,common_test:true,sample_size:20,question_count:23,kind:'vocabulary'};
  const c=setup(async()=>response({ok:true,first_name:'Alex'}),'',[task]);await authenticate(c);await vm.runInContext("assessmentOptions('u4-test-1')",c);
  const html=c.document.querySelector().innerHTML;assert.ok(!html.includes('ep-test-level'));assert.ok(!html.includes('Bitte wählen'));
- assert.match(html,/15 gemischte Vokabelaufgaben/);assert.match(html,/5 englische Wortbeschreibungen/);assert.match(html,/3 Satzübersetzungen/);assert.match(html,/Niveau wird erst aus den Antworten ermittelt/);
+ assert.match(html,/15 Wörter/);assert.match(html,/5 Wörter/);assert.match(html,/3 Sätze/);assert.match(html,/26 Punkte/);assert.doesNotMatch(html,/Kompetenz im Raster|Niveau wird erst|Freigabe gilt nur|Wortschatz-Teilnachweis/);
+});
+
+test('the evaluation button opens the stored answers and renders feedback safely',()=>{
+ const c=setup(async()=>response({}));const target={hidden:true,innerHTML:''},button={textContent:'',setAttribute(k,v){this[k]=v}};c.document.getElementById=id=>id==='ep-vocab-marking'?target:null;c.testButton=button;
+ vm.runInContext('VocabTest.toggleFeedback(testButton)',c);assert.equal(target.hidden,false);assert.equal(button['aria-expanded'],'true');assert.equal(button.textContent,'Auswertung schließen');
+ vm.runInContext('VocabTest.toggleFeedback(testButton)',c);assert.equal(target.hidden,true);
+ const html=vm.runInContext(`VocabTest.feedbackMarkup({feedback:[{prompt:'<script>',given:'the bus stop',example:'bus stop',kind:'correct',points:1,max_points:1}]})`,c);assert.match(html,/the bus stop/);assert.match(html,/Richtig/);assert.ok(!html.includes('<script>'));
+});
+test('saved tests and their answers can be read outside the new-test window',async()=>{
+ const id='11111111-1111-4111-8111-111111111111';const calls=[];const c=setup(async(url,init)=>{if(url.endsWith('resolve_code_v2'))return response({ok:true,first_name:'Alex'});calls.push(url);const p=JSON.parse(init.body);return response(p.p_result_id?{ok:true,result:{id,title:'Test 1',points:15,max_points:26,feedback:[{prompt:'Bushaltestelle',given:'bus stop',example:'bus stop',kind:'correct',points:1,max_points:1}]}}:{ok:true,results:[{id,title:'Test 1',submitted_at:'2026-10-24T07:00:00Z',points:15,max_points:26}],next_before:null})});await authenticate(c);const fetch=c.fetch;c.fetch=(url,init)=>url.endsWith('test_window')||url.endsWith('access_window')?Promise.resolve(response({open:false})):fetch(url,init);
+ await vm.runInContext('TestHistory.open()',c);assert.match(c.document.querySelector().innerHTML,/15\/26/);assert.equal(c.location.hash,'#test-history');await vm.runInContext(`TestHistory.detail('${id}')`,c);assert.match(c.document.querySelector().innerHTML,/bus stop/);assert.ok(calls.every(u=>u.endsWith('my_results')));c.link.reset();assert.equal(vm.runInContext('TestHistory.rows.length',c),0);assert.doesNotMatch(c.document.querySelector().innerHTML,/bus stop/);
+});
+test('a late history response cannot reveal a previous pupil after sign-out',async()=>{
+ let resolve;const c=setup(async()=>response({ok:true,first_name:'Alex'}));await authenticate(c);c.fetch=()=>new Promise(r=>resolve=r);const pending=vm.runInContext('TestHistory.open()',c);c.link.reset();resolve(response({ok:true,results:[{title:'Private old result'}]}));await pending;assert.doesNotMatch(c.document.querySelector().innerHTML,/Private old result/);
 });
