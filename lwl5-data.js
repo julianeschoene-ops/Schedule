@@ -1026,9 +1026,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "seasons",
@@ -1043,9 +1043,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "dates",
@@ -1060,9 +1060,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "dates",
@@ -1077,9 +1077,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "pancakes",
@@ -1094,9 +1094,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "weather",
@@ -1111,9 +1111,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "camping",
@@ -1128,9 +1128,9 @@ const LWL5_DATA={
     "Decke eine Seite ab, rufe die Übersetzung ab und kontrolliere danach. Wiederhole Fehler später noch einmal."
    ],
    "answers": [
-    "Vergleiche deine abgeschriebene Liste mit den Vokabelseiten im Buch: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
+    "Vergleiche deine abgeschriebene Liste mit der Vokabelliste hier auf der Seite: Sind alle Wörter vollständig, richtig geschrieben und mit wichtigen Ergänzungen notiert?"
    ],
-   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Für die vollständige Liste benutzt du dein Buch bzw. Heft.",
+   "why": "Die Zusatzübung trainiert passende Wörter zum Thema. Die vollständige Liste und die Vokabelübungen findest du direkt hier.",
    "level": "G/M/E",
    "kind": "model",
    "practice": "robin",
