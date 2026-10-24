@@ -244,3 +244,10 @@ test('home exposes a prominent test destination before the illustration',()=>{
  const c=setup(async()=>response({}));const html=c.document.querySelector().innerHTML;
  assert.ok(html.includes('entry-switch'));assert.ok(html.indexOf('Zum Testbereich')<html.indexOf('hero home-hero'));
 });
+
+test('common test introduction removes self-selection and explains the 15/5/3 structure',async()=>{
+ const task={...catalog[0],differentiated:true,common_test:true,sample_size:20,question_count:23,kind:'vocabulary'};
+ const c=setup(async()=>response({ok:true,first_name:'Alex'}),'',[task]);await authenticate(c);await vm.runInContext("assessmentOptions('u4-test-1')",c);
+ const html=c.document.querySelector().innerHTML;assert.ok(!html.includes('ep-test-level'));assert.ok(!html.includes('Bitte wählen'));
+ assert.match(html,/15 gemischte Vokabelaufgaben/);assert.match(html,/5 englische Wortbeschreibungen/);assert.match(html,/3 Satzübersetzungen/);assert.match(html,/Niveau wird erst aus den Antworten ermittelt/);
+});
