@@ -5,7 +5,8 @@ const PracticeLink = {
   storageKey: 'ep-kompass-session', idleMs: 30 * 60 * 1000,
   token: null, pin: null, waitingPending: [], candidate: null, name: '', active: false, last: 0,
   pending: [], attempt: null, state: 'guest', message: '', flushing: false, generation: 0,
-  retiredPractice: false,
+  retiredPractice: false, entryCode:'',selectedSymbol:'',restoredPending:[],
+  symbols:{fox:['🦊','Fuchs'],panda:['🐼','Panda'],frog:['🐸','Frosch'],lion:['🦁','Löwe'],penguin:['🐧','Pinguin'],turtle:['🐢','Schildkröte'],dolphin:['🐬','Delfin'],butterfly:['🦋','Schmetterling'],bee:['🐝','Biene'],owl:['🦉','Eule'],rabbit:['🐰','Hase'],cat:['🐱','Katze'],dog:['🐶','Hund'],koala:['🐨','Koala'],octopus:['🐙','Oktopus'],unicorn:['🦄','Einhorn']},
   initialCode: new URLSearchParams(location.hash.slice(1)).get('code'),
   capture() {
     if (this.initialCode !== null) history.replaceState(null, '', location.pathname + location.search);
@@ -15,7 +16,7 @@ const PracticeLink = {
     try {
       const code = this.token || this.candidate;
       if (!code) return sessionStorage.removeItem(this.storageKey);
-      sessionStorage.setItem(this.storageKey, JSON.stringify({token:code,last:this.last,pending:this.token ? this.pending : this.waitingPending}));
+      sessionStorage.setItem(this.storageKey, JSON.stringify({token:code,shortCode:this.entryCode||undefined,last:this.last,pending:this.token ? this.pending : this.waitingPending}));
     } catch (_) { /* Current tab still works if session storage is unavailable. */ }
   },
   async rpc(name, payload) {
@@ -34,7 +35,7 @@ const PracticeLink = {
   reset() {
     if(typeof TestFocus!=='undefined')TestFocus.stop();
     this.generation++; this.token = null; this.pin = null; this.waitingPending = []; this.candidate = null; this.name = ''; this.active = false;
-    this.pending = []; this.attempt = null; this.windowInfo = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;
+    this.pending = []; this.attempt = null; this.windowInfo = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;this.entryCode='';this.selectedSymbol='';this.restoredPending=[];
     try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
     if(typeof TestHistory!=='undefined')TestHistory.reset();
     if (typeof clearAssessmentAccess === 'function') clearAssessmentAccess();
@@ -49,19 +50,26 @@ const PracticeLink = {
     if (this.token) { this.last = Date.now(); this.persist(); }
   },
   async boot() {
-    let stored = null;
-    try { stored = JSON.parse(sessionStorage.getItem(this.storageKey) || 'null'); } catch (_) {}
-    const code = this.initialCode;
-    this.initialCode = null;
-    if (code !== null) {
-      this.reset();
-      if (typeof clearPracticeData === 'function') clearPracticeData();
-      return this.connect(code);
-    }
-    if (stored?.token && Date.now() - Number(stored.last) < this.idleMs) {
-      return this.connect(stored.token, stored.pending);
-    }
+    let stored=null;try{stored=JSON.parse(sessionStorage.getItem(this.storageKey)||'null')}catch(_){}
+    const hadQR=this.initialCode!==null;this.initialCode=null;
     this.reset();
+    if(hadQR&&typeof clearPracticeData==='function')clearPracticeData();
+    if(stored?.token&&Date.now()-Number(stored.last)<this.idleMs){this.entryCode=stored.shortCode||'';this.restoredPending=Array.isArray(stored.pending)?stored.pending:[];this.state='access';}
+    else if(hadQR)this.state='access';
+    this.paint();
+  },
+  chooseSymbol(key){if(!this.symbols[key])return;this.entryCode=document.getElementById('practice-short-code')?.value||this.entryCode;this.selectedSymbol=key;this.paint()},
+  async signIn(codeValue,symbolValue){
+    if(this.active||this.state==='checking')return;
+    const shortCode=String(codeValue??document.getElementById('practice-short-code')?.value??this.entryCode).trim(),symbol=symbolValue??this.selectedSymbol;
+    this.entryCode=shortCode;this.selectedSymbol=symbol;
+    if(!/^[0-9]{4}$/.test(shortCode)||!this.symbols[symbol]){this.message='Gib deinen vierstelligen Code ein und wähle dein Symbol.';this.state='access';this.paint();return}
+    const generation=this.generation;this.state='checking';this.message='';this.paint();
+    try{const data=await this.rpc('kompass_english_login',{p_code:shortCode,p_symbol:symbol});if(generation!==this.generation)return;
+      if(!data.ok||!/^[a-f0-9]{64}$/.test(data.token||'')||!/^[0-9]{6}$/.test(data.pin||'')){this.state='access';this.message=data.message||'Code oder Symbol stimmt nicht.';this.paint();return}
+      this.token=data.token;this.pin=data.pin;this.name=data.first_name;this.last=Date.now();this.candidate=null;
+      this.pending=this.restoredPending.filter(p=>p?.p_token===data.token&&/^(?:vocab|assessment):lwl-/.test(p.p_task_key||''));this.restoredPending=[];this.selectedSymbol='';this.state='confirm';this.persist();this.paint();
+    }catch(_){if(generation!==this.generation)return;this.state='access';this.message='Anmelden klappt gerade nicht. Bitte prüfe die Verbindung und versuche es noch einmal.';this.paint()}
   },
   async connect(raw, pending = []) {
     let code = String(raw || '').trim();
@@ -110,18 +118,18 @@ const PracticeLink = {
     else if (location.hash === '#tests' && typeof assessments === 'function') assessments();
   },
   enterCode() {
-    if (this.active && !confirm('Mit einem anderen Übungscode fortfahren? Bitte zuerst alle Testergebnisse übertragen.')) return;
-    const code = prompt('Persönlichen Übungslink eingeben. Alternativ deinen QR-Code scannen:');
-    if (code !== null) { if (typeof clearPracticeData === 'function') clearPracticeData(); this.connect(code); }
+    if(this.active&&!this.canEnd())return;
+    if(typeof clearPracticeData==='function')clearPracticeData();this.reset();this.state='access';this.paint();
   },
   markup() {
-    const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Übungslink eingeben</button>';
+    const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Mit Code anmelden</button>';
+    if(this.state==='access')return `<div class="practice-link login-card"><form onsubmit="event.preventDefault();PracticeLink.signIn()"><label for="practice-short-code"><b>Dein Code</b></label><input id="practice-short-code" class="input short-code" type="text" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" value="${this.escape(this.entryCode)}" autocomplete="off" aria-describedby="practice-access-error"><fieldset class="symbol-picker"><legend>Dein Symbol</legend><div class="symbol-grid">${Object.entries(this.symbols).map(([key,[icon,label]])=>`<button type="button" class="symbol-choice ${this.selectedSymbol===key?'chosen':''}" aria-label="${label}" aria-pressed="${this.selectedSymbol===key}" onclick="PracticeLink.chooseSymbol('${key}')">${icon}</button>`).join('')}</div></fieldset><p id="practice-access-error" role="status">${this.escape(this.message)}</p><button class="btn" type="submit">Anmelden</button><button class="btn secondary" type="button" onclick="PracticeLink.reset()">Ohne Anmeldung üben</button></form></div>`;
     if (this.state === 'pin') return `<div class="practice-link"><form onsubmit="event.preventDefault();PracticeLink.login()"><label for="practice-pin"><b>Deine persönliche PIN</b></label><p>Gib die sechs Ziffern von deiner Zugangskarte ein.</p><input id="practice-pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" aria-describedby="practice-pin-error" style="width:160px;font-size:1.2rem;padding:10px;border:1px solid #d4bfc3;border-radius:8px"><button class="btn" type="submit">Anmelden</button><p id="practice-pin-error" role="status">${this.escape(this.message)}</p></form><button class="btn secondary" onclick="PracticeLink.reset()">Ohne Anmeldung üben</button></div>`;
     if (this.state === 'checking') return '<div class="practice-link" role="status">Dein Übungscode wird geprüft …</div>';
     if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p></p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
     if (this.active) return `<div class="practice-link" role="status"><b>Hallo ${this.escape(this.name)}!</b> ${this.retiredPractice ? '<p>Die vorherige ausstehende Runde war ein Selbstcheck und wurde deshalb nicht als Test übernommen.</p>' : ''}${this.message ? `<p>${this.escape(this.message)}</p>` : ''}${this.pending.length ? `<p>${this.pending.length} Ergebnis(se) warten auf Übertragung. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button></p>` : ''}</div>`;
     if (this.state === 'error') return `<div class="practice-link" role="status">${this.escape(this.message)} ${this.candidate ? '<button class="btn secondary" onclick="PracticeLink.connect(PracticeLink.candidate)">Erneut prüfen</button>' : ''} ${button}</div>`;
-    return `<div class="practice-link"><span>Du kannst sofort üben. Für Tests melde dich mit deinem QR-Code an.</span> ${button}</div>`;
+    return `<div class="practice-link"><span>Du kannst sofort üben. Für Tests melde dich mit deinem Code und Symbol an.</span> ${button}</div>`;
   },
   paint() {
     const target = document.getElementById('practice-connection');
@@ -151,8 +159,8 @@ const PracticeLink = {
   },
   beginTest(taskKey, topic) {
     this.touch();
-    if (this.candidate && !this.active) {
-      alert('Bitte zuerst oben deine PIN eingeben und deinen Namen bestätigen.'); return false;
+    if ((this.candidate||['access','checking','confirm'].includes(this.state)) && !this.active) {
+      alert('Bitte zuerst oben mit Code und Symbol anmelden und deinen Namen bestätigen.'); return false;
     }
     if (!this.active && !confirm('Du übst ohne persönlichen Code. Dieser Test wird nicht an deine Lehrkraft übertragen. Trotzdem starten?')) return false;
     this.attempt = {id:crypto.randomUUID(),token:this.active ? this.token : null,taskKey,topic,testDate:this.windowInfo?.test_date,status:'started'};

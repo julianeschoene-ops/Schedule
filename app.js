@@ -19,7 +19,7 @@ function testDeadlineText(){const info=PracticeLink.windowInfo;if(info?.demo_acc
 function testAreaNav(){return `<div class="crumbs"><button onclick="home()">Zurück zum Üben</button><span>›</span><button onclick="assessments()">Testbereich · Englisch</button><button onclick="TestHistory.open()">Meine Tests</button><span style="margin-left:auto">${endButton()}</span></div><div id="practice-connection">${PracticeLink.markup()}</div>`}
 function testAreaShell(body){return testAreaNav()+body}
 function testAreaGate(message){return testAreaShell(`<section class="hero"><h1>Testbereich · Englisch</h1><p>Montag–Freitag · 8:00–12:30 Uhr · außerhalb der Ferien und schulfreien Tage in Baden-Württemberg.</p><p role="status">${esc(message)}</p></section>`)}
-function clearAssessmentAccess(){activeAssessment=null;VocabTest.reset();stopAssessmentAudio();assessmentCatalog=[];testAreaGeneration++;clearTimeout(testGateTimer);if(isTestRoute()){mode=null;app.innerHTML=testAreaGate('Bitte mit deinem persönlichen QR-Code und deiner PIN anmelden und deinen Namen bestätigen.')}}
+function clearAssessmentAccess(){activeAssessment=null;VocabTest.reset();stopAssessmentAudio();assessmentCatalog=[];testAreaGeneration++;clearTimeout(testGateTimer);if(isTestRoute()){mode=null;app.innerHTML=testAreaGate('Bitte mit deinem Code und Symbol anmelden und deinen Namen bestätigen.')}}
 function closeTestArea(message){if(typeof TestFocus!=='undefined')TestFocus.stop();assessmentCatalog=[];testAreaGeneration++;clearTimeout(testGateTimer);if(!isTestRoute())return;activeAssessment=null;stopAssessmentAudio();if(mode==='assessment'&&PracticeLink.attempt?.status==='started'){PracticeLink.attempt.status='failed';PracticeLink.message='Testbereich geschlossen. Der noch nicht abgegebene Test wurde nicht übertragen.'}mode=null;if(isTestRoute())app.innerHTML=testAreaGate(message||'Der Testbereich ist geschlossen. Üben kannst du jederzeit.')}
 function armTestGate(info){clearTimeout(testGateTimer);if(!isTestRoute())return;if(!info?.open)return;const ms=Date.parse(info.closes_at)-Date.parse(info.server_now);if(Number.isFinite(ms)){testGateTimer=setTimeout(()=>closeTestArea(info.demo_access?'Dein persönlicher Testzugang ist abgelaufen. Für andere Kinder gilt weiterhin die reguläre Testzeit.':'Die Testzeit ist um 12:30 Uhr beendet. Nicht abgegebene Tests wurden nicht übertragen. Üben kannst du jederzeit.'),Math.max(0,ms));testGateTimer?.unref?.()}}
 async function loadAssessmentAccess(){
@@ -28,7 +28,7 @@ async function loadAssessmentAccess(){
  if(generation!==PracticeLink.generation||areaGeneration!==testAreaGeneration)return null;
  if(!info)return {ok:false,message:'Der Testbereich konnte nicht freigegeben werden. Bitte Verbindung prüfen. Üben geht weiterhin.'};
  if(!info.open)return {ok:false,message:info.message||'Der Testbereich ist geschlossen. Üben kannst du jederzeit.'};
- if(!PracticeLink.active)return {ok:false,message:'Bitte zuerst deinen persönlichen QR-Code öffnen, PIN eingeben und deinen Namen bestätigen.'};
+ if(!PracticeLink.active)return {ok:false,message:'Bitte zuerst mit deinem Code und Symbol anmelden und deinen Namen bestätigen.'};
  try{const r=await PracticeLink.rpc('kompass_english_test_catalog',{p_token:PracticeLink.token,p_pin:PracticeLink.pin});
  if(generation!==PracticeLink.generation||areaGeneration!==testAreaGeneration)return null;
  if(!r.ok)return {ok:false,message:r.message||'Der Testbereich konnte nicht freigegeben werden.'};

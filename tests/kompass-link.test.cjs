@@ -37,12 +37,10 @@ function setup(fetch, hash = '', testCatalog = catalog) {
 }
 const response = data => ({ok:true,json:async()=>data});
 const code = 'a'.repeat(64);
-test('QR token is removed from the URL; a child must confirm their name',async()=>{
-  const c=setup(async()=>response({ok:true,first_name:'Alex'}),'#code='+code);
-  assert.equal(c.location.hash,'');assert.equal(c.lastUrl,'/Schedule/');
-  await c.link.boot();assert.equal(c.link.active,false);assert.equal(c.link.state,'pin');assert.equal(c.link.name,'');
-  assert.equal(c.link.beginTest('vocab:lwl-u4-test-1','School'),false);
-  await c.link.login('123456');assert.equal(c.link.state,'confirm');c.link.confirm();assert.equal(c.link.active,true);assert.ok(!c.sessionStorage.getItem(c.link.storageKey).includes('123456'));
+test('an existing glued QR opens code-and-symbol entry and still requires name confirmation',async()=>{
+  const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}),'#code='+code);
+  assert.equal(c.location.hash,'');assert.equal(c.lastUrl,'/Schedule/');await c.link.boot();assert.equal(c.link.state,'access');assert.equal(c.link.name,'');assert.equal(c.link.active,false);assert.equal(c.link.beginTest('vocab:lwl-u4-test-1','School'),false);
+  await c.link.signIn('4837','fox');assert.equal(c.link.state,'confirm');assert.equal(c.link.active,false);c.link.confirm();assert.equal(c.link.active,true);const saved=c.sessionStorage.getItem(c.link.storageKey);assert.ok(!saved.includes('123456'));assert.ok(!saved.includes('fox'));assert.match(saved,/4837/);
 });
 test('only an explicit LWL assessment submits; repeated finish sends one attempt; end clears identity',async()=>{
   const submissions=[];
@@ -163,9 +161,9 @@ test('closed hours hide the entire catalog including direct test links',async()=
  await vm.runInContext("assessmentOptions('u4-test-1')",c);
  assert.match(c.document.querySelector().innerHTML,/Herbstferien/);assert.ok(!c.document.querySelector().innerHTML.includes('Test starten'));assert.equal(catalogs,0);
 });
-test('opening hours alone do not reveal tests without confirmed QR and PIN',async()=>{
+test('opening hours alone do not reveal tests without confirmed code and symbol',async()=>{
  const c=setup(async()=>response({}));await vm.runInContext('assessments()',c);
- const html=c.document.querySelector().innerHTML;assert.match(html,/persönlichen QR-Code/);assert.ok(!html.includes('Vocabulary Test 1'));
+ const html=c.document.querySelector().innerHTML;assert.match(html,/Code und Symbol/);assert.ok(!html.includes('Vocabulary Test 1'));
 });
 test('the closing timer uses server duration and removes an unfinished test',async()=>{
  const c=setup(async()=>response({ok:true,first_name:'Alex'}));await c.link.connect(code);await c.link.login('123456');c.link.confirm();
@@ -272,4 +270,14 @@ test('interruption deductions and points are submitted together, retries use the
 });
 test('the child sees one free warning followed by one point per further switch',()=>{
  const c=setup(async()=>response({}));c.data={points:13,max_points:26,interruptions:{count:3,policy:'first_warning_then_one',deduction:2,points_before:15}};const html=vm.runInContext('VocabTest.summaryMarkup(data)',c);assert.match(html,/3 Seitenwechsel/);assert.match(html,/1. Wechsel: Warnung/);assert.match(html,/2 Punkte Abzug/);assert.match(html,/13\/26/);
+});
+
+test('wrong short code/symbol does not reveal a name or activate tests',async()=>{
+ const c=setup(async()=>response({ok:false,message:'Code oder Symbol stimmt nicht.'}));c.link.enterCode();await c.link.signIn('4837','panda');assert.equal(c.link.state,'access');assert.equal(c.link.active,false);assert.equal(c.link.name,'');assert.equal(c.link.token,null);assert.equal(c.link.beginTest('vocab:lwl-u4-test-1','Test'),false);
+});
+test('a code-and-symbol response after reset cannot sign in the next child',async()=>{
+ let resolve;const c=setup(()=>new Promise(r=>resolve=r));c.link.enterCode();const p=c.link.signIn('4837','fox');c.link.reset();resolve(response({ok:true,first_name:'Alex',token:code,pin:'123456'}));await p;assert.equal(c.link.state,'guest');assert.equal(c.link.name,'');assert.equal(c.link.active,false);
+});
+test('reload asks for the symbol again and restores pending results only for the matching pupil',async()=>{
+ const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}));c.sessionStorage.setItem(c.link.storageKey,JSON.stringify({token:code,shortCode:'4837',last:Date.now(),pending:[{p_token:code,p_task_key:'vocab:lwl-u4-test-1',p_attempt_id:'own'},{p_token:'b'.repeat(64),p_task_key:'vocab:lwl-u4-test-1',p_attempt_id:'foreign'}]}));await c.link.boot();assert.equal(c.link.state,'access');assert.equal(c.link.entryCode,'4837');assert.equal(c.link.selectedSymbol,'');await c.link.signIn('4837','fox');assert.equal(c.link.pending.length,1);assert.equal(c.link.pending[0].p_attempt_id,'own');c.link.reset();assert.equal(c.link.entryCode,'');assert.equal(c.link.selectedSymbol,'');
 });
