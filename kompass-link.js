@@ -124,6 +124,7 @@ const PracticeLink = {
     if (target) target.innerHTML = this.markup();
     const status = document.getElementById('ep-result-status');
     if (status) status.innerHTML = this.resultMarkup();
+    if(typeof VocabTest!=='undefined')VocabTest.paint();
   },
   async testWindow() {
     try {
@@ -160,10 +161,15 @@ const PracticeLink = {
     this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max,p_test_date:a.testDate});
     this.persist(); this.flush();
   },
+  finishVocab(answers) {
+    const a=this.attempt;if(!a||a.status!=='started')return;this.touch();if(this.attempt!==a||!this.active||a.token!==this.token)return;
+    a.status='pending';
+    this.pending.push({protocol:'vocab_lnw',p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_answers:answers});this.persist();this.flush();
+  },
   resultMarkup() {
     const a = this.attempt;
     if (!a || a.status === 'guest' || !a.token) return 'Ohne persönlichen Code: Dieses Ergebnis wurde nicht an KOMPASS übertragen.';
-    if (a.status === 'saved') return '✓ Dein Testergebnis wurde bei deiner Englischkompetenz in KOMPASS gespeichert.';
+    if (a.status === 'saved') return '✓ Dein Testergebnis wurde bei deiner Englischkompetenz in KOMPASS gespeichert.'+(a.needsReview?' Satzvarianten warten auf Lehrkraftprüfung; dieses Ergebnis ist vorläufig.':'');
     if (a.status === 'failed') return this.escape(this.message || 'Dieses Ergebnis konnte nicht gespeichert werden. Bitte deine Lehrkraft fragen.');
     return 'Dein Ergebnis wartet auf Übertragung. Bitte diese Seite offen lassen. <button class="btn secondary" onclick="PracticeLink.flush()">Erneut senden</button>';
   },
@@ -177,7 +183,7 @@ const PracticeLink = {
       for (const payload of [...this.pending]) {
         if (generation !== this.generation || !this.active || payload.p_token !== token) break;
         try {
-          const r = await this.rpc('kompass_english_submit_result_v3', {...payload,p_pin:this.pin});
+          const r = payload.protocol==='vocab_lnw'?await this.rpc('kompass_english_submit_vocab',{p_token:payload.p_token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_answers:payload.p_answers}):await this.rpc('kompass_english_submit_result_v3', {...payload,p_pin:this.pin});
           if (generation !== this.generation) break;
           if (!r.saved) {
             if (r.window_closed || r.practice_only || r.update_required) {
@@ -189,7 +195,7 @@ const PracticeLink = {
             this.message = r.message || 'Speicherung nicht bestätigt.'; this.paint(); break;
           }
           this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
-          if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'saved';
+          if (this.attempt?.id === payload.p_attempt_id){this.attempt.status = 'saved';if(r.needs_review!==undefined)this.attempt.needsReview=r.needs_review;if(payload.protocol==='vocab_lnw')this.attempt.outcome=r;}
           this.persist(); this.paint();
         } catch (e) {
           if (generation !== this.generation) break;

@@ -29,6 +29,8 @@ function setup(fetch, hash = '', testCatalog = catalog) {
   c.window = c;
   vm.createContext(c);
   vm.runInContext(fs.readFileSync(path.join(root,'kompass-link.js'),'utf8')+'\nglobalThis.link=PracticeLink;',c);
+  vm.runInContext(fs.readFileSync(path.join(root,'answer-check.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(root,'vocab-test.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),c);
   return c;
 }
@@ -221,4 +223,24 @@ test('a late personal access response after logout cannot restore demo access',a
  let resolve;const c=setup(async()=>response({ok:true,first_name:'Alex'}));await authenticate(c);
  c.fetch=()=>new Promise(r=>resolve=r);const pending=c.link.testWindow();c.link.reset();resolve(response({open:true,demo_access:true}));
  assert.equal(await pending,null);assert.equal(c.link.windowInfo,null);
+});
+
+test('new vocabulary tests receive no answer key and use the server result only',async()=>{
+ const task={...catalog[0],differentiated:true,sample_size:20,question_count:20,kind:'vocabulary'},sent=[];
+ const summary={innerHTML:''};const c=setup(async(url,init)=>{
+  if(url.endsWith('resolve_code_v2'))return response({ok:true,first_name:'Alex'});
+  if(url.endsWith('start_vocab'))return response({ok:true,id:'issued-test',level:'E',test_date:'2026-10-24',max_points:50,items:Array.from({length:20},(_,n)=>({word_id:'word-'+n,prompt:n<15?'die Bushaltestelle':'Die Bushaltestelle ist neben dem Park.',kind:n<15?'de-en':'sentence',max_points:n<15?2:4}))});
+  sent.push({url,body:JSON.parse(init.body)});return response({saved:true,points:35,max_points:50,needs_review:true,feedback:[]});
+ },'',[task]);
+ c.document.getElementById=id=>id==='ep-test-level'?{value:'E'}:id==='ans'?{value:'the bus stop'}:id==='ep-vocab-summary'?summary:null;
+ await authenticate(c);await vm.runInContext("startAssessment('u4-test-1')",c);
+ assert.equal(vm.runInContext('deck.length',c),20);assert.equal(vm.runInContext("deck.some(q=>'accepted' in q)",c),false);
+ vm.runInContext("AnswerCheck.word=()=>{throw new Error('Test must be marked on server')};for(let n=0;n<20;n++)VocabTest.answer(false)",c);
+ await tick();await tick();assert.equal(sent.length,1);assert.ok(sent[0].url.endsWith('submit_vocab'));
+ assert.equal(sent[0].body.p_answers.length,20);assert.equal(sent[0].body.p_answers[0].points,undefined);assert.equal(sent[0].body.p_points,undefined);
+ assert.equal(c.link.attempt.status,'saved');assert.match(summary.innerHTML,/35\/50/);assert.match(summary.innerHTML,/Vorläufig/);
+});
+test('home exposes a prominent test destination before the illustration',()=>{
+ const c=setup(async()=>response({}));const html=c.document.querySelector().innerHTML;
+ assert.ok(html.includes('entry-switch'));assert.ok(html.indexOf('Zum Testbereich')<html.indexOf('hero home-hero'));
 });
