@@ -229,16 +229,16 @@ test('new vocabulary tests receive no answer key and use the server result only'
  const task={...catalog[0],differentiated:true,sample_size:20,question_count:20,kind:'vocabulary'},sent=[];
  const summary={innerHTML:''};const c=setup(async(url,init)=>{
   if(url.endsWith('resolve_code_v2'))return response({ok:true,first_name:'Alex'});
-  if(url.endsWith('start_vocab'))return response({ok:true,id:'issued-test',level:'E',test_date:'2026-10-24',max_points:50,items:Array.from({length:20},(_,n)=>({word_id:'word-'+n,prompt:n<15?'die Bushaltestelle':'Die Bushaltestelle ist neben dem Park.',kind:n<15?'de-en':'sentence',max_points:n<15?2:4}))});
-  sent.push({url,body:JSON.parse(init.body)});return response({saved:true,points:35,max_points:50,needs_review:true,feedback:[]});
+  if(url.endsWith('start_common_vocab'))return response({ok:true,id:'issued-test',format:'common_depth_v1',test_date:'2026-10-24',target_count:20,max_points:52,items:Array.from({length:23},(_,n)=>({word_id:'word-'+n,item_id:'item-'+n,level:n<15?'G':n<20?'M':'E',prompt:n<15?'die Bushaltestelle':n<20?'A place where people wait for a bus.':'Die Bushaltestelle ist neben dem Park.',kind:n<15?'de-en':n<20?'meaning':'sentence',max_points:n<20?2:4}))});
+  sent.push({url,body:JSON.parse(init.body)});return response({saved:true,points:30,max_points:52,needs_review:true,feedback:[],outcome:{level:'G',status:'green',totalScore:{points:30,max:52},attainmentScore:{points:30,max:30,percent:100},byLevel:{G:{points:30,max:30},M:{points:0,max:10},E:{points:0,max:12}}}});
  },'',[task]);
  c.document.getElementById=id=>id==='ep-test-level'?{value:'E'}:id==='ans'?{value:'the bus stop'}:id==='ep-vocab-summary'?summary:null;
  await authenticate(c);await vm.runInContext("startAssessment('u4-test-1')",c);
- assert.equal(vm.runInContext('deck.length',c),20);assert.equal(vm.runInContext("deck.some(q=>'accepted' in q)",c),false);
- vm.runInContext("AnswerCheck.word=()=>{throw new Error('Test must be marked on server')};for(let n=0;n<20;n++)VocabTest.answer(false)",c);
+ assert.equal(vm.runInContext('deck.length',c),23);assert.equal(vm.runInContext("deck.some(q=>'accepted' in q)",c),false);
+ vm.runInContext("AnswerCheck.word=()=>{throw new Error('Test must be marked on server')};for(let n=0;n<23;n++)VocabTest.answer(false)",c);
  await tick();await tick();assert.equal(sent.length,1);assert.ok(sent[0].url.endsWith('submit_vocab'));
- assert.equal(sent[0].body.p_answers.length,20);assert.equal(sent[0].body.p_answers[0].points,undefined);assert.equal(sent[0].body.p_points,undefined);
- assert.equal(c.link.attempt.status,'saved');assert.match(summary.innerHTML,/35\/50/);assert.match(summary.innerHTML,/Vorläufig/);
+ assert.equal(sent[0].body.p_answers.length,23);assert.equal(sent[0].body.p_answers[0].points,undefined);assert.equal(sent[0].body.p_points,undefined);
+ assert.equal(c.link.attempt.status,'saved');assert.match(summary.innerHTML,/30\/52/);assert.match(summary.innerHTML,/Niveau G/);assert.match(summary.innerHTML,/Grün/);assert.match(summary.innerHTML,/Vorläufig/);
 });
 test('home exposes a prominent test destination before the illustration',()=>{
  const c=setup(async()=>response({}));const html=c.document.querySelector().innerHTML;
