@@ -160,3 +160,5 @@ footer{color:#8b8186}
 @media(max-width:600px){.home-actions{grid-template-columns:1fr 1fr}.home-actions .test-entry{grid-column:1/-1;grid-row:1}.home-footer{align-items:flex-start;flex-direction:column}.home-hero .hero-copy{max-width:70%}.home-hero{min-height:210px}.history-card{align-items:stretch;flex-direction:column}.history-card .btn{width:100%}.common-parts .btn{min-width:88px;padding:11px 7px;font-size:.85rem}.test-intro{padding:22px}.question.result h1{font-size:1.65rem}.answer-detail{padding:14px}}
 
 .test-pause{position:fixed;inset:0;z-index:100;background:#fffafbfa;display:grid;place-items:center;padding:20px}.test-pause section{max-width:480px;width:100%;background:white;border:2px solid var(--line);border-radius:22px;padding:28px;box-shadow:0 10px 40px #820d2520}.test-pause h1{font-size:1.6rem;color:var(--dark-red);margin-top:0}.test-pause p{line-height:1.5}.test-pause .btn{width:100%;min-height:50px}
+
+.interruption-deduction{background:#fff2d6;color:#704e18;border-radius:12px;padding:12px;font-size:.95rem;line-height:1.5}

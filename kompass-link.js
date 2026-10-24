@@ -128,6 +128,9 @@ const PracticeLink = {
     if (target) target.innerHTML = this.markup();
     const status = document.getElementById('ep-result-status');
     if (status) status.innerHTML = this.resultMarkup();
+    const outcome=this.attempt?.outcome;
+    if(outcome&&this.attempt?.kind!=='vocab_lnw'){const percent=document.getElementById('ep-check-percent'),points=document.getElementById('ep-check-points');if(percent)percent.textContent=Math.round(outcome.points/outcome.max_points*100)+'%';if(points)points.textContent=outcome.points+'/'+outcome.max_points+' Punkte';}
+    const deduction=document.getElementById('ep-interruption-deduction');if(deduction&&outcome&&typeof VocabTest!=='undefined')deduction.innerHTML=VocabTest.deductionMarkup(outcome);
     if(typeof VocabTest!=='undefined')VocabTest.paint();
   },
   async testWindow() {
@@ -190,7 +193,8 @@ const PracticeLink = {
         if (generation !== this.generation || !this.active || payload.p_token !== token) break;
         try {
           const {interruptions,...submission}=payload;
-          const r = payload.protocol==='vocab_lnw'?await this.rpc('kompass_english_submit_vocab',{p_token:payload.p_token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_answers:payload.p_answers}):await this.rpc('kompass_english_submit_result_v3', {...submission,p_pin:this.pin});
+          const hasInterruptions=interruptions?.count>0;
+          const r = payload.protocol==='vocab_lnw'?await this.rpc(hasInterruptions?'kompass_english_submit_vocab_v2':'kompass_english_submit_vocab',{p_token:payload.p_token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_answers:payload.p_answers,...(hasInterruptions?{p_interruptions:interruptions.count}:{})}):await this.rpc(hasInterruptions?'kompass_english_submit_result_v4':'kompass_english_submit_result_v3', {...submission,p_pin:this.pin,...(hasInterruptions?{p_interruptions:interruptions.count}:{})});
           if (generation !== this.generation) break;
           if (!r.saved) {
             if (r.window_closed || r.practice_only || r.update_required) {
@@ -201,9 +205,9 @@ const PracticeLink = {
             if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
             this.message = r.message || 'Speicherung nicht bestätigt.'; this.paint(); break;
           }
-          if(interruptions?.count>0){const report=await this.rpc('kompass_english_report_interruptions',{p_token:token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_count:interruptions.count});if(generation!==this.generation)break;if(!report.ok)throw new Error(report.message||'Unterbrechungsvermerk konnte nicht gespeichert werden.');}
+
           this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
-          if (this.attempt?.id === payload.p_attempt_id){this.attempt.status = 'saved';if(r.needs_review!==undefined)this.attempt.needsReview=r.needs_review;if(payload.protocol==='vocab_lnw')this.attempt.outcome=r;}
+          if (this.attempt?.id === payload.p_attempt_id){this.attempt.status = 'saved';if(r.needs_review!==undefined)this.attempt.needsReview=r.needs_review;if(payload.protocol==='vocab_lnw'||hasInterruptions)this.attempt.outcome=r;}
           this.persist(); this.paint();
         } catch (e) {
           if (generation !== this.generation) break;
