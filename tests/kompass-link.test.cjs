@@ -290,12 +290,38 @@ test('Simple Present offers twenty fresh sentences without visible answer hints'
   const c=setup(async()=>response({ok:true}));
   vm.runInContext(fs.readFileSync(path.join(root,'grammar.js'),'utf8'),c);
   vm.runInContext("openGrammar('simple_present');startGrammar()",c);
-  const first=JSON.parse(c.localStorage.getItem('grammar-previous-simple_present'));
+  const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
   assert.equal(first.length,20);
   assert.equal(new Set(first).size,20);
   assert.doesNotMatch(c.document.querySelector().innerHTML,/Hint:/);
   vm.runInContext('startGrammar()',c);
-  const second=JSON.parse(c.localStorage.getItem('grammar-previous-simple_present'));
+  const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
   assert.equal(second.length,20);
   assert.equal(first.filter(q=>second.includes(q)).length,0);
+});
+
+test('all grammar areas have enough distinct examples for repeated 15-item rounds',()=>{
+  const c=setup(async()=>response({ok:true}));
+  for(const name of ['grammar.js','grammar-rounds.js'])vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),c);
+  const lengths=vm.runInContext('Object.entries(GRAMMAR).map(([key,g])=>[key,new Set(g.tasks.map(t=>t.q)).size])',c);
+  for(const [key,n] of lengths)assert.ok(n>=30,`${key} has only ${n} different questions`);
+  vm.runInContext("openGrammar('articles');startGrammar()",c);
+  const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-articles'));
+  vm.runInContext('startGrammar()',c);
+  const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-articles'));
+  assert.equal(first.length,15);assert.equal(second.length,15);
+  assert.equal(first.filter(q=>second.includes(q)).length,0);
+});
+
+test('short vocabulary lists receive same-unit review words and a new round',()=>{
+  const c=setup(async()=>response({ok:true}));
+  c.VOCAB['u1-review']={unit:1,number:2,title:'Review',words:Array.from({length:25},(_,n)=>['review'+n,'Wiederholung'+n])};
+  vm.runInContext("openList('u1');start('de-en')",c);
+  const first=vm.runInContext('deck.map(w=>w[0])',c);
+  assert.equal(first.length,15);
+  assert.ok(first.includes('word0'));
+  vm.runInContext("start('de-en')",c);
+  const second=vm.runInContext('deck.map(w=>w[0])',c);
+  assert.equal(second.length,15);
+  assert.notDeepEqual(first,second);
 });
