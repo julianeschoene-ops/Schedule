@@ -95,10 +95,71 @@ Object.assign(GRAMMAR,{
 });
 
 
-// Fresh, answerable Simple Present sentences. Keep more than two rounds in the pool.
+// Distinct, natural Simple Present statements for four non-repeating rounds.
 const presentSubjects=[['I',false],['You',false],['We',false],['They',false],['Mia',true],['Ben',true],['My sister',true],['Our teacher',true],['The children',false],['My friends',false]];
 const presentActions=[['play','football after school','plays'],['read','a book in the evening','reads'],['watch','TV on Fridays','watches'],['go','to school by bus','goes'],['do','homework after lunch','does'],['have','breakfast at seven','has'],['like','music','likes'],['get','up early','gets'],['study','English at school','studies'],['wash','the dishes after dinner','washes']];
-GRAMMAR.simple_present.tasks=presentSubjects.flatMap(([subject,singular])=>presentActions.map(([verb,rest,third])=>({q:`${subject} ___ ${rest}. (${verb})`,a:singular?third:verb})));
+GRAMMAR.simple_present.tasks=[
+ ['I ___ my bike to school on sunny days. (ride)','ride'],
+ ['Mia ___ the bus when it rains. (take)','takes'],
+ ['We ___ at the gate before school. (meet)','meet'],
+ ['Our teacher ___ the classroom at eight. (open)','opens'],
+ ['Ben ___ his lunch in a blue box. (carry)','carries'],
+ ['The children ___ their coats in the hall. (leave)','leave'],
+ ['My brother ___ his keys in the kitchen. (keep)','keeps'],
+ ['I ___ my timetable every morning. (check)','check'],
+ ['Our class ___ English on Mondays. (have)','has'],
+ ['My friends ___ stories during the break. (tell)','tell'],
+ ['Mia ___ the new words in her notebook. (write)','writes'],
+ ['We ___ questions when we need help. (ask)','ask'],
+ ['The librarian ___ us new books. (show)','shows'],
+ ['Ben ___ the answer before he speaks. (think about)','thinks about'],
+ ['I ___ a pencil from my friend sometimes. (borrow)','borrow'],
+ ['My sister ___ her bag before breakfast. (pack)','packs'],
+ ['They ___ basketball in the park. (play)','play'],
+ ['Our dog ___ under the table after a walk. (sleep)','sleeps'],
+ ['Mia ___ her grandparents every Sunday. (visit)','visits'],
+ ['We ___ pancakes at the weekend. (make)','make'],
+ ['Dad ___ the vegetables for dinner. (cut)','cuts'],
+ ['My cousins ___ near the river. (live)','live'],
+ ['Ben ___ his little sister with homework. (help)','helps'],
+ ['I ___ music while I tidy my room. (listen to)','listen to'],
+ ['The cat ___ onto the sofa. (jump)','jumps'],
+ ['My parents ___ to work early. (go)','go'],
+ ['Mia ___ her hands before lunch. (wash)','washes'],
+ ['We ___ dinner together at six. (eat)','eat'],
+ ['Grandma ___ funny stories about her childhood. (remember)','remembers'],
+ ['The baby ___ when she is hungry. (cry)','cries'],
+ ['I ___ my phone before I go to bed. (charge)','charge'],
+ ['Ben ___ photos of birds in the garden. (take)','takes'],
+ ['My friends ___ comics on the train. (read)','read'],
+ ['The shop ___ at nine o’clock. (close)','closes'],
+ ['We ___ our neighbours at the market. (see)','see'],
+ ['Mia ___ a red jacket in winter. (wear)','wears'],
+ ['The children ___ a song for the school show. (practise)','practise'],
+ ['My uncle ___ cakes for the café. (bake)','bakes'],
+ ['I ___ my water bottle after PE. (fill)','fill'],
+ ['Ben ___ the dishes after dinner. (dry)','dries'],
+ ['Our neighbours ___ vegetables in their garden. (grow)','grow'],
+ ['Mia ___ her dog every afternoon. (walk)','walks'],
+ ['We ___ the train to town on Saturdays. (catch)','catch'],
+ ['The film ___ at half past seven. (start)','starts'],
+ ['My sister ___ pictures of animals. (draw)','draws'],
+ ['I ___ for my friends outside the cinema. (wait)','wait'],
+ ['Ben ___ a helmet when he rides his bike. (wear)','wears'],
+ ['The birds ___ in the tree outside my window. (sing)','sing'],
+ ['Mia ___ her room on Fridays. (tidy)','tidies'],
+ ['We ___ a map when we visit a new place. (use)','use'],
+ ['Our coach ___ the rules before a game. (explain)','explains'],
+ ['I ___ a postcard to my aunt in the holidays. (send)','send'],
+ ['Ben ___ up early for football practice. (get)','gets'],
+ ['My friends ___ home after the last lesson. (run)','run'],
+ ['The baker ___ fresh bread every morning. (sell)','sells'],
+ ['We ___ films in English sometimes. (watch)','watch'],
+ ['Mia ___ a library book each week. (choose)','chooses'],
+ ['My brother ___ his shoes by the door. (put)','puts'],
+ ['I ___ my grandparents on Sunday evenings. (call)','call'],
+ ['The school bell ___ at eight o’clock. (ring)','rings']
+].map(([q,a])=>({q,a}));
 GRAMMAR.simple_present_questions.tasks=presentSubjects.flatMap(([subject,singular])=>presentActions.map(([verb,rest])=>({q:`___ ${(subject==='I'?'I':/^(Mia|Ben)$/.test(subject)?subject:subject.toLowerCase())} ${verb} ${rest}?`,a:singular?'Does':'Do'})));
 
 // Expanded Unit 5 practice pools.

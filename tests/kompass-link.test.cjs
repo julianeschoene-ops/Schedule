@@ -298,18 +298,26 @@ test('reload asks for the symbol again and restores pending results only for the
 
 test('a direct LWL exercise link survives initial page load and remains open without a login',async()=>{const c=setup(async()=>response({}),'#lwl5-2d-wb71-11');assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.match(c.document.querySelector().innerHTML,/WB S. 71/);await c.link.boot();assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.equal(c.link.active,false);assert.equal(vm.runInContext('mode',c),null);});
 
-test('Simple Present offers twenty fresh sentences without visible answer hints',()=>{
+test('Simple Present gives four varied rounds of fifteen distinct sentences without hints',()=>{
   const c=setup(async()=>response({ok:true}));
   vm.runInContext(fs.readFileSync(path.join(root,'grammar.js'),'utf8'),c);
-  vm.runInContext("openGrammar('simple_present');startGrammar()",c);
-  const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
-  assert.equal(first.length,20);
-  assert.equal(new Set(first).size,20);
+  const pool=vm.runInContext('GRAMMAR.simple_present.tasks.map(t=>t.q)',c);
+  assert.equal(pool.length,60);
+  assert.equal(new Set(pool).size,60);
+  vm.runInContext("openGrammar('simple_present')",c);
+  assert.match(c.document.querySelector().innerHTML,/15 questions/);
+  const rounds=[];
+  for(let n=0;n<4;n++){
+    vm.runInContext('startGrammar()',c);
+    const round=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
+    assert.equal(round.length,15);
+    assert.match(c.document.querySelector().innerHTML,/1 \/ 15/);
+    rounds.push(...round);
+  }
+  assert.equal(new Set(rounds).size,60);
   assert.doesNotMatch(c.document.querySelector().innerHTML,/Hint:/);
   vm.runInContext('startGrammar()',c);
-  const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
-  assert.equal(second.length,20);
-  assert.equal(first.filter(q=>second.includes(q)).length,0);
+  assert.equal(JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present')).length,15);
 });
 
 test('all grammar areas have enough distinct examples for repeated 15-item rounds',()=>{
