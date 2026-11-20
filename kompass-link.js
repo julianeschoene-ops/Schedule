@@ -2,7 +2,7 @@
 const PracticeLink = {
   url: 'https://gexhcpyzwzybrpuygqmf.supabase.co/rest/v1/rpc/',
   key: 'sb_publishable_U7Dp3SXHADswPjg4Vj7mzw_kG27owvK',
-  storageKey: 'ep-kompass-session', idleMs: 30 * 60 * 1000,
+  storageKey: 'ep-kompass-session', idleMs: 15 * 60 * 1000,
   token: null, pin: null, waitingPending: [], candidate: null, name: '', active: false, last: 0,
   pending: [], attempt: null, state: 'guest', message: '', flushing: false, generation: 0,
   retiredPractice: false, entryCode:'',selectedSymbol:'',restoredPending:[],
@@ -43,8 +43,8 @@ const PracticeLink = {
   },
   touch() {
     if (this.token && Date.now() - this.last > this.idleMs) {
-      this.reset();
-      if (typeof clearPracticeData === 'function') clearPracticeData();
+      if (typeof autoEndSession === 'function') autoEndSession();
+      else this.reset();
       return;
     }
     if (this.token) { this.last = Date.now(); this.persist(); }
@@ -241,5 +241,8 @@ document.addEventListener('click', () => PracticeLink.touch(), {passive:true});
 document.addEventListener('keydown', () => PracticeLink.touch(), {passive:true});
 window.addEventListener('online', () => PracticeLink.flush());
 setInterval(() => {
-  if (PracticeLink.token && Date.now() - PracticeLink.last > PracticeLink.idleMs) PracticeLink.reset();
+  if (PracticeLink.token && Date.now() - PracticeLink.last > PracticeLink.idleMs) {
+    if (typeof autoEndSession === 'function') autoEndSession();
+    else PracticeLink.reset();
+  }
 }, 30000);

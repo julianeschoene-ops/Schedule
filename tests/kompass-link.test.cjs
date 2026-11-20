@@ -15,7 +15,7 @@ function storage() {
 const catalog=[{id:'u4-test-1',task_key:'vocab:lwl-u4-test-1',unit:4,title:'Vocabulary Test 1',source:'LWL · Station 1 · Aufgabe 2a',list:'16',range:'shop – now',question_count:23,competency_id:'eng5_5',competency_text:'Ich kann Orts- und Zeitangaben verstehen und richtig benutzen.',competency_area:'Sprachliche Mittel – Wortschatz',scope:'Wortschatz-Teilnachweis'},
 {id:'u4-test-2',task_key:'vocab:lwl-u4-test-2',unit:4,title:'Vocabulary Test 2',source:'LWL · Station 2 · Aufgabe 3a',list:'17',range:'way – by (bike)',question_count:50,competency_id:'eng5_5',competency_text:'Ich kann Orts- und Zeitangaben verstehen und richtig benutzen.',competency_area:'Sprachliche Mittel – Wortschatz',scope:'Wortschatz-Teilnachweis'}];
 function setup(fetch, hash = '', testCatalog = catalog) {
-  const app = {innerHTML:''}, c = {
+  const app = {innerHTML:'',insertAdjacentHTML(_position,markup){this.innerHTML=markup+this.innerHTML}}, c = {
     console,URLSearchParams,AbortController,crypto:webcrypto,Date:class extends Date {},
     location:{hash,pathname:'/Schedule/',search:''},
     history:{replaceState(_a,_b,url){c.location.hash='';c.lastUrl=url;}},
@@ -39,6 +39,18 @@ function setup(fetch, hash = '', testCatalog = catalog) {
 }
 const response = data => ({ok:true,json:async()=>data});
 const code = 'a'.repeat(64);
+test('fifteen idle minutes log out a pupil and remove shared-device practice data',async()=>{
+  const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}));
+  await c.link.signIn('4837','fox');c.link.confirm();
+  c.localStorage.setItem('ep-journal',JSON.stringify({grammar:[{points:15,max:20}]}));
+  c.localStorage.setItem('ep-session-last',String(Date.now()-16*60*1000));
+  c.link.last=Date.now()-16*60*1000;
+  vm.runInContext('touchSession()',c);
+  assert.equal(c.link.active,false);
+  assert.equal(c.sessionStorage.getItem(c.link.storageKey),null);
+  assert.equal(c.localStorage.getItem('ep-journal'),null);
+  assert.match(c.document.querySelector().innerHTML,/automatisch abgemeldet/);
+});
 test('an existing glued QR opens code-and-symbol entry and still requires name confirmation',async()=>{
   const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}),'#code='+code);
   assert.equal(c.location.hash,'');assert.equal(c.lastUrl,'/Schedule/');await c.link.boot();assert.equal(c.link.state,'access');assert.equal(c.link.name,'');assert.equal(c.link.active,false);assert.equal(c.link.beginTest('vocab:lwl-u4-test-1','School'),false);
