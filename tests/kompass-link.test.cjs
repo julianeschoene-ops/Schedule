@@ -63,6 +63,17 @@ test('saved stars return after sign-in and award the Word Wizard medal at level 
   assert.equal(c.journal.payload().stars,3);
   assert.equal(c.journal.payload().starsTotal,40);
 });
+test('the level bar advances as soon as an answer earns a star',()=>{
+  const c=setup(async()=>response({ok:true}));
+  c.localStorage.setItem('ep-game',JSON.stringify({stars:4,streak:0,best:0,correct:4}));
+  const fill={style:{width:'27%'}},count={textContent:''},track={setAttribute(name,value){this[name]=value}},detail={textContent:''},streak={textContent:''};
+  const bar={querySelector(selector){return {'.level-fill':fill,'.star-count':count,'.level-track':track,'.level-progress small':detail,'.streak-count':streak}[selector]}};
+  c.document.querySelectorAll=selector=>selector==='.gamebar'?[bar]:[];
+  vm.runInContext('reward(10)',c);
+  assert.equal(fill.style.width,'33%');
+  assert.equal(count.textContent,'5 Sterne');
+  assert.match(detail.textContent,/Noch 10 Sterne bis Level 2/);
+});
 test('an existing glued QR opens code-and-symbol entry and still requires name confirmation',async()=>{
   const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}),'#code='+code);
   assert.equal(c.location.hash,'');assert.equal(c.lastUrl,'/Schedule/');await c.link.boot();assert.equal(c.link.state,'access');assert.equal(c.link.name,'');assert.equal(c.link.active,false);assert.equal(c.link.beginTest('vocab:lwl-u4-test-1','School'),false);
