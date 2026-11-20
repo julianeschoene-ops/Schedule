@@ -325,3 +325,32 @@ test('short vocabulary lists receive same-unit review words and a new round',()=
   assert.equal(second.length,15);
   assert.notDeepEqual(first,second);
 });
+
+test('a completed guest grammar round offers to transfer its existing result',()=>{
+  const c=setup(async()=>response({ok:true}));
+  vm.runInContext(fs.readFileSync(path.join(root,'grammar.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(root,'practice-journal.js'),'utf8'),c);
+  vm.runInContext("openGrammar('simple_present');startGrammar();score=15;i=deck.length;finishGrammar()",c);
+  assert.match(c.document.querySelector().innerHTML,/Ergebnis an KOMPASS übertragen/);
+  vm.runInContext('PracticeJournal.open()',c);
+  assert.match(c.document.querySelector().innerHTML,/Mit Code und Symbol anmelden/);
+  assert.equal(JSON.parse(c.localStorage.getItem('ep-journal')).grammar[0].points,15);
+});
+
+test('confirming the test child on the practice summary sends the saved exercise',async()=>{
+  const submissions=[];
+  const c=setup(async(url,init)=>{
+    if(url.endsWith('kompass_english_login'))return response({ok:true,first_name:'Testkind',token:code,pin:'123456'});
+    if(url.endsWith('kompass_english_save_practice')){submissions.push(JSON.parse(init.body));return response({ok:true,saved:true})}
+    return response({ok:true});
+  });
+  vm.runInContext(fs.readFileSync(path.join(root,'grammar.js'),'utf8'),c);
+  vm.runInContext(fs.readFileSync(path.join(root,'practice-journal.js'),'utf8'),c);
+  c.location.hash='#practice-summary';
+  c.localStorage.setItem('ep-journal',JSON.stringify({id:'a23d4f90-1111-4111-8111-111111111111',grammar:[{title:'Simple Present',points:15,max:20}]}));
+  await c.link.signIn('0967','octopus');c.link.confirm();await tick();await tick();
+  assert.equal(submissions.length,1);
+  assert.equal(submissions[0].p_report.grammar[0].points,15);
+  assert.equal(submissions[0].p_token,code);
+  assert.match(c.document.querySelector().innerHTML,/In KOMPASS gespeichert/);
+});
