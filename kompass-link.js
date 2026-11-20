@@ -113,7 +113,7 @@ const PracticeLink = {
     this.active = true; this.state = 'active'; this.last = Date.now(); this.persist();
     this.paint(); this.flush();
     if(location.hash.startsWith('#live='))return LiveQuiz.joinPage(location.hash.slice(6));
-    if(location.hash==='#practice-summary'&&typeof PracticeJournal!=='undefined')PracticeJournal.render();
+    if(location.hash==='#practice-summary'&&typeof PracticeJournal!=='undefined'){PracticeJournal.render('Übungsstand wird übertragen …');void PracticeJournal.send();}
     else if(location.hash==='#test-history'&&typeof TestHistory!=='undefined')TestHistory.open();
     else if(location.hash.startsWith('#test-result-')&&typeof TestHistory!=='undefined')TestHistory.detail(location.hash.slice(13));
     else if (location.hash.startsWith('#assessment-') && typeof assessmentOptions === 'function') assessmentOptions(location.hash.slice(12));
