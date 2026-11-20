@@ -120,7 +120,7 @@ test('ordinary selfchecks stay available outside test time and never submit',asy
   c.fetch=async()=>{throw Error('A practice round must not call the server')};
   vm.runInContext("current='u1';testOptions();startTest(10);score=7;i=deck.length;finish()",c);
   await tick();assert.equal(calls,0);assert.equal(c.link.attempt,null);assert.equal(c.link.pending.length,0);
-  assert.match(c.document.querySelector().innerHTML,/Kein Ergebnis an KOMPASS/);
+  assert.match(c.document.querySelector().innerHTML,/Kein bewerteter Lernnachweis/);
 });
 test('the protected test area shows only tests with their exact competency',async()=>{
  const c=setup(async()=>response({ok:true,first_name:'Alex'}));await c.link.connect(code);await c.link.login('123456');c.link.confirm();await vm.runInContext('assessments()',c);const html=c.document.querySelector().innerHTML;
@@ -285,3 +285,43 @@ test('reload asks for the symbol again and restores pending results only for the
 });
 
 test('a direct LWL exercise link survives initial page load and remains open without a login',async()=>{const c=setup(async()=>response({}),'#lwl5-2d-wb71-11');assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.match(c.document.querySelector().innerHTML,/WB S. 71/);await c.link.boot();assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.equal(c.link.active,false);assert.equal(vm.runInContext('mode',c),null);});
+
+test('Simple Present offers twenty fresh sentences without visible answer hints',()=>{
+  const c=setup(async()=>response({ok:true}));
+  vm.runInContext(fs.readFileSync(path.join(root,'grammar.js'),'utf8'),c);
+  vm.runInContext("openGrammar('simple_present');startGrammar()",c);
+  const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
+  assert.equal(first.length,20);
+  assert.equal(new Set(first).size,20);
+  assert.doesNotMatch(c.document.querySelector().innerHTML,/Hint:/);
+  vm.runInContext('startGrammar()',c);
+  const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-simple_present'));
+  assert.equal(second.length,20);
+  assert.equal(first.filter(q=>second.includes(q)).length,0);
+});
+
+test('all grammar areas have enough distinct examples for repeated 15-item rounds',()=>{
+  const c=setup(async()=>response({ok:true}));
+  for(const name of ['grammar.js','grammar-rounds.js'])vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),c);
+  const lengths=vm.runInContext('Object.entries(GRAMMAR).map(([key,g])=>[key,new Set(g.tasks.map(t=>t.q)).size])',c);
+  for(const [key,n] of lengths)assert.ok(n>=30,`${key} has only ${n} different questions`);
+  vm.runInContext("openGrammar('articles');startGrammar()",c);
+  const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-articles'));
+  vm.runInContext('startGrammar()',c);
+  const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-articles'));
+  assert.equal(first.length,15);assert.equal(second.length,15);
+  assert.equal(first.filter(q=>second.includes(q)).length,0);
+});
+
+test('short vocabulary lists receive same-unit review words and a new round',()=>{
+  const c=setup(async()=>response({ok:true}));
+  c.VOCAB['u1-review']={unit:1,number:2,title:'Review',words:Array.from({length:25},(_,n)=>['review'+n,'Wiederholung'+n])};
+  vm.runInContext("openList('u1');start('de-en')",c);
+  const first=vm.runInContext('deck.map(w=>w[0])',c);
+  assert.equal(first.length,15);
+  assert.ok(first.includes('word0'));
+  vm.runInContext("start('de-en')",c);
+  const second=vm.runInContext('deck.map(w=>w[0])',c);
+  assert.equal(second.length,15);
+  assert.notDeepEqual(first,second);
+});
