@@ -20,7 +20,7 @@ function setup(fetch, hash = '', testCatalog = catalog) {
     location:{hash,pathname:'/Schedule/',search:''},
     history:{replaceState(_a,_b,url){c.location.hash='';c.lastUrl=url;}},
     document:{querySelector:()=>app,getElementById:()=>null,querySelectorAll:()=>[],addEventListener(){}},
-    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>(/kompass_english_(?:test_window|access_window)$/.test(url))?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:testCatalog})):fetch(url,init),
+    sessionStorage:storage(),localStorage:storage(),fetch:(url,init)=>(/kompass_english_(?:test_window|access_window)$/.test(url))?Promise.resolve(response({open:true,test_date:'2026-10-23'})):url.endsWith('kompass_english_test_catalog')?Promise.resolve(response({ok:true,open:true,tests:testCatalog})):url.endsWith('kompass_english_practice_progress')?Promise.resolve(response({ok:true,stars:0})):fetch(url,init),
     setInterval(){},setTimeout,clearTimeout,confirm:()=>true,alert(){},prompt:()=>null,
     addEventListener(){},
     VOCAB:{'16':{unit:4,number:16,title:'shop – now',words:Array.from({length:23},(_,n)=>['word'+n,'Wort'+n])},'17':{unit:4,number:17,title:'way – by (bike)',words:Array.from({length:50},(_,n)=>['word'+n,'Wort'+n])},u1:{unit:1,number:1,title:'School',words:Array.from({length:10},(_,n)=>['word'+n,'Wort'+n])}}
@@ -50,6 +50,18 @@ test('fifteen idle minutes log out a pupil and remove shared-device practice dat
   assert.equal(c.sessionStorage.getItem(c.link.storageKey),null);
   assert.equal(c.localStorage.getItem('ep-journal'),null);
   assert.match(c.document.querySelector().innerHTML,/automatisch abgemeldet/);
+});
+test('saved stars return after sign-in and award the Word Wizard medal at level three',async()=>{
+  const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}));
+  vm.runInContext(fs.readFileSync(path.join(root,'practice-journal.js'),'utf8')+'\nglobalThis.journal=PracticeJournal;',c);
+  c.link.rpc=async name=>name==='kompass_english_practice_progress'?{ok:true,stars:37}:{ok:true,first_name:'Alex',token:code,pin:'123456'};
+  await c.link.signIn('4837','fox');c.link.confirm();await c.journal.progressPromise;
+  assert.equal(vm.runInContext('game().stars',c),37);
+  vm.runInContext('reward(10);reward(10);reward(10)',c);
+  assert.match(vm.runInContext('gameBadges()',c),/Level 3: <b>Word Wizard<\/b>/);
+  assert.match(vm.runInContext('gameBadges()',c),/🏅 Word Wizard/);
+  assert.equal(c.journal.payload().stars,3);
+  assert.equal(c.journal.payload().starsTotal,40);
 });
 test('an existing glued QR opens code-and-symbol entry and still requires name confirmation',async()=>{
   const c=setup(async()=>response({ok:true,first_name:'Alex',token:code,pin:'123456'}),'#code='+code);

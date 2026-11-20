@@ -47,6 +47,7 @@ body{margin:0;font-family:ui-rounded,"SF Pro Rounded","Avenir Next",system-ui,sa
 .score{font-size:4rem;font-weight:900;color:var(--blue)}
 .gamebar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 20px}
 .gamebar span{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:.88rem;box-shadow:0 3px 10px #23345c0a}
+.level-progress{display:flex;flex-direction:column;gap:3px;min-width:180px;max-width:260px;flex:1;font-size:.76rem;color:#49252c}.level-progress progress{width:100%;height:9px;accent-color:#ba8120}.level-progress small{line-height:1.25}
 .featured{border:2px solid var(--accent);background:#fff8f6}
 .starter-list{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}
 .chip{border:1px solid #bfc9df;border-radius:999px;padding:8px 12px;background:var(--soft);color:var(--blue);font:inherit;cursor:pointer}
