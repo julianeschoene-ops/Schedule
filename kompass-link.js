@@ -34,6 +34,7 @@ const PracticeLink = {
   },
   reset() {
     if(typeof TestFocus!=='undefined')TestFocus.stop();
+    if(typeof PracticeJournal!=='undefined')PracticeJournal.resetProgress();
     this.generation++; this.token = null; this.pin = null; this.waitingPending = []; this.candidate = null; this.name = ''; this.active = false;
     this.pending = []; this.attempt = null; this.windowInfo = null; this.state = 'guest'; this.message = ''; this.retiredPractice = false;this.entryCode='';this.selectedSymbol='';this.restoredPending=[];
     try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
@@ -111,6 +112,7 @@ const PracticeLink = {
   confirm() {
     if (this.state !== 'confirm' || !this.token) return;
     this.active = true; this.state = 'active'; this.last = Date.now(); this.persist();
+    if(typeof PracticeJournal!=='undefined')PracticeJournal.loadProgress();
     this.paint(); this.flush();
     if(location.hash.startsWith('#live='))return LiveQuiz.joinPage(location.hash.slice(6));
     if(location.hash==='#practice-summary'&&typeof PracticeJournal!=='undefined'){PracticeJournal.render('Übungsstand wird übertragen …');void PracticeJournal.send();}
