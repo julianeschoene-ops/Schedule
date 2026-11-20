@@ -3,7 +3,7 @@ const LwlGuide={
  task:null,exercise:null,tab:'help',quizIndex:0,feedback:'',
  state(){try{return JSON.parse(localStorage.getItem('ep-lwl5')||'{}')||{}}catch(_){return {}}},
  progress(){return this.state()[this.exercise]||{}},
- update(patch){const all=this.state();all[this.exercise]={...this.progress(),...patch,at:new Date().toISOString()};localStorage.setItem('ep-lwl5',JSON.stringify(all));touchSession()},
+ update(patch){const all=this.state();all[this.exercise]={...this.progress(),...patch,at:new Date().toISOString()};localStorage.setItem('ep-lwl5',JSON.stringify(all));touchSession();if(typeof PracticeLink!=='undefined'&&PracticeLink.active&&typeof PracticeJournal!=='undefined')PracticeJournal.sendSilently()},
  stars(){return Object.values(this.state()).filter(s=>s.star).length},
  leaveTest(){stopAssessmentAudio();if(typeof TestFocus!=='undefined')TestFocus.stop();mode=null},
  route(hash){const parts=hash.split('-');return parts[1]?this.open(parts[1],parts.slice(2).join('-')):this.overview()},
