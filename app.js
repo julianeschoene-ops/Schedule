@@ -15,6 +15,8 @@ function gameBar(){return `<div id="practice-connection">${PracticeLink.markup()
 let practiceSpeech=null;
 let practiceSpeechRetry=null;
 function speakText(encoded,rate=.85){
+  const tappedButton=window.event?.target?.closest?.('button');
+  if(tappedButton){const label=tappedButton.textContent;tappedButton.textContent='✓ Angetippt';setTimeout(()=>{if(tappedButton.isConnected)tappedButton.textContent=label},1800)}
   if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
   let value;
   try{value=decodeURIComponent(encoded||'').trim()}catch(_){return}
