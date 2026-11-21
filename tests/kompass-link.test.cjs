@@ -321,12 +321,14 @@ test('reload asks for the symbol again and restores pending results only for the
 
 test('a direct LWL exercise link survives initial page load and remains open without a login',async()=>{const c=setup(async()=>response({}),'#lwl5-2d-wb71-11');assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.match(c.document.querySelector().innerHTML,/WB S. 71/);await c.link.boot();assert.equal(vm.runInContext('LwlGuide.exercise',c),'wb71-11');assert.equal(c.link.active,false);assert.equal(vm.runInContext('mode',c),null);});
 
-test('Simple Present gives four varied rounds of fifteen distinct sentences without hints',()=>{
+test('Simple Present gives four varied rounds of fifteen familiar sentences without hints',()=>{
   const c=setup(async()=>response({ok:true}));
-  vm.runInContext(fs.readFileSync(path.join(root,'grammar.js'),'utf8'),c);
+  for(const name of ['grammar.js','grammar-rounds.js','grammar-curriculum.js'])vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),c);
   const pool=vm.runInContext('GRAMMAR.simple_present.tasks.map(t=>t.q)',c);
   assert.equal(pool.length,60);
   assert.equal(new Set(pool).size,60);
+  assert.ok(pool.every(q=>q.length<90));
+  assert.ok(pool.every(q=>!/librarian|helmet|timetable|pancakes|neighbours|postcard|rainbow/i.test(q)));
   vm.runInContext("openGrammar('simple_present')",c);
   assert.match(c.document.querySelector().innerHTML,/15 questions/);
   const rounds=[];
@@ -345,19 +347,22 @@ test('Simple Present gives four varied rounds of fifteen distinct sentences with
 
 test('all grammar areas have enough distinct examples for repeated 15-item rounds',()=>{
   const c=setup(async()=>response({ok:true}));
-  for(const name of ['grammar.js','grammar-rounds.js'])vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),c);
+  for(const name of ['grammar.js','grammar-rounds.js','grammar-curriculum.js'])vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),c);
   const lengths=vm.runInContext('Object.entries(GRAMMAR).map(([key,g])=>[key,new Set(g.tasks.map(t=>t.q)).size])',c);
   for(const [key,n] of lengths)assert.ok(n>=30,`${key} has only ${n} different questions`);
-  vm.runInContext("openGrammar('articles');startGrammar()",c);
-  const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-articles'));
-  vm.runInContext('startGrammar()',c);
-  const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-articles'));
-  assert.equal(first.length,15);assert.equal(second.length,15);
-  assert.equal(first.filter(q=>second.includes(q)).length,0);
+  for(const [key] of lengths){
+    vm.runInContext(`openGrammar('${key}');startGrammar()`,c);
+    const first=JSON.parse(c.localStorage.getItem('practice-previous-grammar-'+key));
+    vm.runInContext('startGrammar()',c);
+    const second=JSON.parse(c.localStorage.getItem('practice-previous-grammar-'+key));
+    assert.equal(first.length,15);assert.equal(second.length,15);
+    assert.equal(first.filter(q=>second.includes(q)).length,0,`${key} repeated a question`);
+  }
 });
 
 test('short vocabulary lists receive same-unit review words and a new round',()=>{
   const c=setup(async()=>response({ok:true}));
+  c.VOCAB.u1.number=3;
   c.VOCAB['u1-review']={unit:1,number:2,title:'Review',words:Array.from({length:25},(_,n)=>['review'+n,'Wiederholung'+n])};
   vm.runInContext("openList('u1');start('de-en')",c);
   const first=vm.runInContext('deck.map(w=>w[0])',c);
@@ -366,7 +371,27 @@ test('short vocabulary lists receive same-unit review words and a new round',()=
   vm.runInContext("start('de-en')",c);
   const second=vm.runInContext('deck.map(w=>w[0])',c);
   assert.equal(second.length,15);
-  assert.notDeepEqual(first,second);
+  assert.equal(first.filter(word=>second.includes(word)).length,0);
+});
+
+test('each vocabulary practice mode uses fifteen fresh items in the next round',()=>{
+  const c=setup(async()=>response({ok:true}));
+  c.VOCAB.u1.number=3;
+  c.VOCAB['u1-review']={unit:1,number:2,title:'Earlier words',words:Array.from({length:40},(_,n)=>['known'+n,'bekannt'+n])};
+  vm.runInContext("openList('u1')",c);
+  for(const mode of ['cards','de-en','en-de','choice','match']){
+    vm.runInContext(`start('${mode}')`,c);
+    const first=vm.runInContext('deck.map(w=>w.join("|"))',c);
+    vm.runInContext(`start('${mode}')`,c);
+    const second=vm.runInContext('deck.map(w=>w.join("|"))',c);
+    assert.equal(first.length,15,mode);assert.equal(second.length,15,mode);
+    assert.equal(first.filter(word=>second.includes(word)).length,0,mode);
+  }
+  vm.runInContext('startTest()',c);
+  const first=vm.runInContext('deck.map(w=>w.join("|"))',c);
+  vm.runInContext('startTest()',c);
+  const second=vm.runInContext('deck.map(w=>w.join("|"))',c);
+  assert.equal(first.length,15);assert.equal(first.filter(word=>second.includes(word)).length,0);
 });
 
 test('a completed guest grammar round offers to transfer its existing result',()=>{
