@@ -12,7 +12,32 @@ function refreshGameBars(before){const bars=[...document.querySelectorAll('.game
  if(before&&before.number!==now.number){bars.forEach(bar=>{const fill=bar.querySelector('.level-fill');if(fill)fill.style.width='100%';const count=bar.querySelector('.star-count');if(count)count.textContent=g.stars+' Sterne'});setTimeout(()=>{if(animation!==levelAnimation)return;document.querySelectorAll('.gamebar').forEach(bar=>{bar.outerHTML=gameBadges()});const notice=document.querySelector('#level-notice');if(notice)notice.textContent='🏅 Level '+now.number+' erreicht: '+now.name+'!'},550);return}
  bars.forEach(bar=>{const count=bar.querySelector('.star-count'),streak=bar.querySelector('.streak-count'),track=bar.querySelector('.level-track'),fill=bar.querySelector('.level-fill'),detail=bar.querySelector('.level-progress small'),numbers=bar.querySelector('.level-progress-label span');if(numbers)numbers.textContent=g.stars+(now.next?' / '+now.next.at:' Sterne');if(count)count.textContent=g.stars+' Sterne';if(streak)streak.textContent=g.streak;if(track)track.setAttribute('aria-valuenow',now.percent);if(fill)fill.style.width=now.percent+'%';if(detail)detail.textContent=now.next?'Noch '+now.missing+' Sterne bis Level '+(now.number+1)+': '+now.next.name:'Höchstes Level erreicht'})}
 function gameBar(){return `<div id="practice-connection">${PracticeLink.markup()}</div>`+gameBadges()}
-function speakText(encoded,rate=.85){if(!('speechSynthesis'in window)){alert('Listening is not available in this browser.');return}speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(decodeURIComponent(encoded));u.lang='en-GB';u.rate=rate;speechSynthesis.speak(u)}
+let practiceSpeech=null;
+let practiceSpeechRetry=null;
+function speakText(encoded,rate=.85){
+  if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
+  let value;
+  try{value=decodeURIComponent(encoded||'').trim()}catch(_){return}
+  if(!value)return;
+  const synth=window.speechSynthesis;
+  clearTimeout(practiceSpeechRetry);
+  try{synth.cancel()}catch(_){}
+  const utterance=new SpeechSynthesisUtterance(value);
+  practiceSpeech=utterance;
+  utterance.lang='en-GB';
+  utterance.rate=rate;
+  let started=false;
+  utterance.onstart=()=>{started=true};
+  utterance.onend=()=>{if(practiceSpeech===utterance)practiceSpeech=null};
+  utterance.onerror=e=>{if(e.error!=='canceled'&&e.error!=='interrupted')console.warn('Speech playback:',e.error)};
+  // iPad Safari can silently drop speak() directly after cancel().
+  // Keep the utterance alive and retry once if playback never starts.
+  try{synth.speak(utterance);if(synth.paused)synth.resume()}catch(e){console.warn('Speech playback:',e)}
+  practiceSpeechRetry=setTimeout(()=>{
+    if(practiceSpeech!==utterance||started)return;
+    try{synth.cancel();const retry=new SpeechSynthesisUtterance(value);practiceSpeech=retry;retry.lang='en-GB';retry.rate=rate;retry.onend=()=>{if(practiceSpeech===retry)practiceSpeech=null};synth.speak(retry);if(synth.paused)synth.resume()}catch(e){console.warn('Speech retry:',e)}
+  },900);
+}
 function endButton(){return `<button class="btn secondary" onclick="endSession()">Abmelden</button>`}function nav(extra=''){return `<div class="crumbs"><button onclick="home()">English Practice</button>${extra}<span style="margin-left:auto">${endButton()}</span></div>${gameBar()}`}
 function home(){if(typeof TestFocus!=='undefined')TestFocus.stop();stopAssessmentAudio();if(location.hash)history.replaceState(null,'',location.pathname+location.search);app.innerHTML=`<section class="hero home-hero"><div class="hero-copy"><h1>Let’s <span>practise!</span></h1><p>Dein Englischtraining – Schritt für Schritt.</p></div></section>${gameBadges()}<div id="practice-connection">${PracticeLink.markup()}</div><nav class="home-actions" aria-label="Deine Bereiche"><button class="btn secondary" onclick="document.getElementById('practice-ways').scrollIntoView({behavior:'smooth'})">Üben ↓</button><button class="btn test-entry" onclick="assessments()">Zum Testbereich →</button><button class="btn secondary" onclick="TestHistory.open()">Meine Tests</button></nav><section id="practice-ways"><h2 class="section-title">Was möchtest du üben?</h2><div class="grid home-grid"><article class="card home-card" onclick="units()"><span class="home-icon">▤</span><span class="num">MY LWL</span><h3>Learning paths</h3><p class="small">Practise the vocabulary and grammar from your current unit.</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="topics()"><span class="home-icon">◎</span><span class="num">TOPICS</span><h3>My World</h3><p class="small">Vokabeln nach Themen üben · Alltag, Freizeit und unterwegs</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="skills()"><span class="home-icon">◇</span><span class="num">SKILLS</span><h3>Grammar & Skills</h3><p class="small">Use English in real situations.</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="readingCorner()"><span class="home-icon">▯</span><span class="num">READING</span><h3>Reading Corner</h3><p class="small">Read short stories and check what you understood.</p><span class="home-arrow">→</span></article></div></section><div class="home-footer">${endButton()}</div>`}
 function grammarCards(unit=null){return Object.entries(GRAMMAR).filter(([,g])=>!unit||g.unit===unit).map(([k,g])=>`<article class="card" onclick="openGrammar('${k}')"><span class="num">UNIT ${g.unit} · GRAMMAR</span><h3>${esc(g.title)}</h3><p class="small">${esc(g.subtitle)} · ${grammarRoundCount(k)} questions per round</p></article>`).join('')}
