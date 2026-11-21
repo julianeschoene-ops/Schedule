@@ -13,32 +13,40 @@ function refreshGameBars(before){const bars=[...document.querySelectorAll('.game
  bars.forEach(bar=>{const count=bar.querySelector('.star-count'),streak=bar.querySelector('.streak-count'),track=bar.querySelector('.level-track'),fill=bar.querySelector('.level-fill'),detail=bar.querySelector('.level-progress small'),numbers=bar.querySelector('.level-progress-label span');if(numbers)numbers.textContent=g.stars+(now.next?' / '+now.next.at:' Sterne');if(count)count.textContent=g.stars+' Sterne';if(streak)streak.textContent=g.streak;if(track)track.setAttribute('aria-valuenow',now.percent);if(fill)fill.style.width=now.percent+'%';if(detail)detail.textContent=now.next?'Noch '+now.missing+' Sterne bis Level '+(now.number+1)+': '+now.next.name:'Höchstes Level erreicht'})}
 function gameBar(){return `<div id="practice-connection">${PracticeLink.markup()}</div>`+gameBadges()}
 let practiceSpeech=null;
-let practiceSpeechRetry=null;
+let practiceAudio=null;
 function speakText(encoded,rate=.85){
-  const tappedButton=window.event?.target?.closest?.('button');
-  if(tappedButton){const label=tappedButton.textContent;tappedButton.textContent='✓ Angetippt';setTimeout(()=>{if(tappedButton.isConnected)tappedButton.textContent=label},1800)}
-  if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
+  const button=window.event?.target?.closest?.('button');
+  const original=button?.textContent;
+  const label=(value)=>{if(button&&button.isConnected)button.textContent=value};
   let value;
   try{value=decodeURIComponent(encoded||'').trim()}catch(_){return}
   if(!value)return;
-  const synth=window.speechSynthesis;
-  clearTimeout(practiceSpeechRetry);
-  try{synth.cancel()}catch(_){}
-  const utterance=new SpeechSynthesisUtterance(value);
-  practiceSpeech=utterance;
-  utterance.lang='en-GB';
-  utterance.rate=rate;
-  let started=false;
-  utterance.onstart=()=>{started=true};
-  utterance.onend=()=>{if(practiceSpeech===utterance)practiceSpeech=null};
-  utterance.onerror=e=>{if(e.error!=='canceled'&&e.error!=='interrupted')console.warn('Speech playback:',e.error)};
-  // iPad Safari can silently drop speak() directly after cancel().
-  // Keep the utterance alive and retry once if playback never starts.
-  try{synth.speak(utterance);if(synth.paused)synth.resume()}catch(e){console.warn('Speech playback:',e)}
-  practiceSpeechRetry=setTimeout(()=>{
-    if(practiceSpeech!==utterance||started)return;
-    try{synth.cancel();const retry=new SpeechSynthesisUtterance(value);practiceSpeech=retry;retry.lang='en-GB';retry.rate=rate;retry.onend=()=>{if(practiceSpeech===retry)practiceSpeech=null};synth.speak(retry);if(synth.paused)synth.resume()}catch(e){console.warn('Speech retry:',e)}
-  },900);
+  if(practiceAudio){practiceAudio.pause();practiceAudio.src='';practiceAudio=null}
+  if(window.speechSynthesis)window.speechSynthesis.cancel();
+  // Use actual audio playback rather than Safari's silently completing speech synthesis.
+  // The public translation TTS endpoint is used only for short listening prompts.
+  const speechFallback=()=>{
+    if(!('speechSynthesis' in window)){label('🔇 Nicht verfügbar');return}
+    try{
+      const u=new SpeechSynthesisUtterance(value);
+      practiceSpeech=u;u.lang='en-GB';u.rate=rate;
+      u.onend=()=>{if(practiceSpeech===u)practiceSpeech=null};
+      window.speechSynthesis.speak(u);
+      label('🔊 Listen');
+    }catch(_){label('🔇 Tonfehler')}
+  };
+  if(value.length>180){speechFallback();return}
+  const audio=new Audio();
+  practiceAudio=audio;
+  audio.preload='auto';
+  audio.playbackRate=rate;
+  audio.onplaying=()=>label('▶ Playing');
+  audio.onended=()=>{if(practiceAudio===audio)practiceAudio=null;label(original||'🔊 Listen')};
+  audio.onerror=()=>{if(practiceAudio!==audio)return;practiceAudio=null;label(original||'🔊 Listen');speechFallback()};
+  audio.src='https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q='+encodeURIComponent(value);
+  label('⏳ Loading');
+  const result=audio.play();
+  if(result&&typeof result.catch==='function')result.catch(()=>{if(practiceAudio!==audio)return;practiceAudio=null;label(original||'🔊 Listen');speechFallback()});
 }
 function endButton(){return `<button class="btn secondary" onclick="endSession()">Abmelden</button>`}function nav(extra=''){return `<div class="crumbs"><button onclick="home()">English Practice</button>${extra}<span style="margin-left:auto">${endButton()}</span></div>${gameBar()}`}
 function home(){if(typeof TestFocus!=='undefined')TestFocus.stop();stopAssessmentAudio();if(location.hash)history.replaceState(null,'',location.pathname+location.search);app.innerHTML=`<section class="hero home-hero"><div class="hero-copy"><h1>Let’s <span>practise!</span></h1><p>Dein Englischtraining – Schritt für Schritt.</p></div></section>${gameBadges()}<div id="practice-connection">${PracticeLink.markup()}</div><nav class="home-actions" aria-label="Deine Bereiche"><button class="btn secondary" onclick="document.getElementById('practice-ways').scrollIntoView({behavior:'smooth'})">Üben ↓</button><button class="btn test-entry" onclick="assessments()">Zum Testbereich →</button><button class="btn secondary" onclick="TestHistory.open()">Meine Tests</button></nav><section id="practice-ways"><h2 class="section-title">Was möchtest du üben?</h2><div class="grid home-grid"><article class="card home-card" onclick="units()"><span class="home-icon">▤</span><span class="num">MY LWL</span><h3>Learning paths</h3><p class="small">Practise the vocabulary and grammar from your current unit.</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="topics()"><span class="home-icon">◎</span><span class="num">TOPICS</span><h3>My World</h3><p class="small">Vokabeln nach Themen üben · Alltag, Freizeit und unterwegs</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="skills()"><span class="home-icon">◇</span><span class="num">SKILLS</span><h3>Grammar & Skills</h3><p class="small">Use English in real situations.</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="readingCorner()"><span class="home-icon">▯</span><span class="num">READING</span><h3>Reading Corner</h3><p class="small">Read short stories and check what you understood.</p><span class="home-arrow">→</span></article></div></section><div class="home-footer">${endButton()}</div>`}
