@@ -65,7 +65,22 @@ function testAreaShell(body){return testAreaNav()+body}
 function testAreaGate(message){return testAreaShell(`<section class="hero"><h1>Testbereich · Englisch</h1><p>Montag–Freitag · 8:00–12:30 Uhr · außerhalb der Ferien und schulfreien Tage in Baden-Württemberg.</p><p role="status">${esc(message)}</p></section>`)}
 function clearAssessmentAccess(){activeAssessment=null;VocabTest.reset();stopAssessmentAudio();assessmentCatalog=[];testAreaGeneration++;clearTimeout(testGateTimer);if(isTestRoute()){mode=null;app.innerHTML=testAreaGate('Bitte mit deinem Code und Symbol anmelden und deinen Namen bestätigen.')}}
 function closeTestArea(message){if(typeof TestFocus!=='undefined')TestFocus.stop();assessmentCatalog=[];testAreaGeneration++;clearTimeout(testGateTimer);if(!isTestRoute())return;activeAssessment=null;stopAssessmentAudio();if(mode==='assessment'&&PracticeLink.attempt?.status==='started'){PracticeLink.attempt.status='failed';PracticeLink.message='Testbereich geschlossen. Der noch nicht abgegebene Test wurde nicht übertragen.'}mode=null;if(isTestRoute())app.innerHTML=testAreaGate(message||'Der Testbereich ist geschlossen. Üben kannst du jederzeit.')}
-function armTestGate(info){clearTimeout(testGateTimer);if(!isTestRoute())return;if(!info?.open)return;const ms=Date.parse(info.closes_at)-Date.parse(info.server_now);if(Number.isFinite(ms)){testGateTimer=setTimeout(()=>closeTestArea(info.demo_access?'Dein persönlicher Testzugang ist abgelaufen. Für andere Kinder gilt weiterhin die reguläre Testzeit.':'Die Testzeit ist um 12:30 Uhr beendet. Nicht abgegebene Tests wurden nicht übertragen. Üben kannst du jederzeit.'),Math.max(0,ms));testGateTimer?.unref?.()}}
+function armTestGate(info){
+  clearTimeout(testGateTimer);
+  if(!isTestRoute()||!info?.open)return;
+  const remaining=Date.parse(info.closes_at)-Date.parse(info.server_now);
+  if(!Number.isFinite(remaining))return;
+  if(remaining<=0){void assessments();return}
+  // Re-check on the server when a window ends: an authorized test account may have
+  // received an extended override since the original response was issued.
+  testGateTimer=setTimeout(async()=>{
+    if(!isTestRoute())return;
+    const fresh=await PracticeLink.testWindow();
+    if(!fresh)return;
+    if(!fresh.open)closeTestArea(fresh.message||'Der Testbereich ist geschlossen.');
+    else if(location.hash==='#tests')void assessments();
+  },Math.min(remaining,2147483647));
+}
 async function loadAssessmentAccess(){
  assessmentCatalog=[];const generation=PracticeLink.generation,areaGeneration=testAreaGeneration;
  const info=await PracticeLink.testWindow();
