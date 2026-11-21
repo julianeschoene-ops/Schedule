@@ -13,37 +13,18 @@ function refreshGameBars(before){const bars=[...document.querySelectorAll('.game
  bars.forEach(bar=>{const count=bar.querySelector('.star-count'),streak=bar.querySelector('.streak-count'),track=bar.querySelector('.level-track'),fill=bar.querySelector('.level-fill'),detail=bar.querySelector('.level-progress small'),numbers=bar.querySelector('.level-progress-label span');if(numbers)numbers.textContent=g.stars+(now.next?' / '+now.next.at:' Sterne');if(count)count.textContent=g.stars+' Sterne';if(streak)streak.textContent=g.streak;if(track)track.setAttribute('aria-valuenow',now.percent);if(fill)fill.style.width=now.percent+'%';if(detail)detail.textContent=now.next?'Noch '+now.missing+' Sterne bis Level '+(now.number+1)+': '+now.next.name:'Höchstes Level erreicht'})}
 function gameBar(){return `<div id="practice-connection">${PracticeLink.markup()}</div>`+gameBadges()}
 let practiceSpeech=null;
-let speechFallbackMode=false;
-function speechStatus(message){
-  let el=document.getElementById('speech-status');
-  if(!el){const button=[...document.querySelectorAll('button')].find(b=>/Listen|Read aloud|Play|Slower/.test(b.textContent));if(button){el=document.createElement('div');el.id='speech-status';el.setAttribute('role','status');el.style.cssText='font-size:14px;color:#704550;margin:10px 0';button.parentElement.insertAdjacentElement('afterend',el)}}
-  if(el)el.textContent=message;
-}
-function speakText(encoded,rate=.85,alternate=false){
-  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){speechStatus('⚠️ Vorlesen ist auf diesem Gerät nicht verfügbar.');return}
-  const value=decodeURIComponent(encoded||'').trim();if(!value)return;
+function speakText(encoded,rate=.85){
+  if(!window.speechSynthesis)return;
+  const value=decodeURIComponent(encoded||'').trim();
+  if(!value)return;
   const synth=window.speechSynthesis;
-  const useAlternate=alternate||speechFallbackMode;
-  try{
-    synth.cancel();
-    const u=new SpeechSynthesisUtterance(value);
-    practiceSpeech=u;
-    // Safari can finish silently when a voice from getVoices() is explicitly assigned.
-    // Use the system-selected English voice first, without overriding u.voice.
-    u.lang=useAlternate?'en-US':'en-GB';u.rate=useAlternate?1:rate;u.pitch=1;u.volume=1;
-    u.onstart=()=>speechStatus('🔊 Sprachausgabe gestartet. Falls stumm: „Andere Stimme“ wählen.');
-    u.onend=()=>{if(practiceSpeech===u){practiceSpeech=null;speechStatus('Wiedergabe abgeschlossen. Kein Ton? „Andere Stimme“ testen.')}};
-    u.onerror=e=>{if(practiceSpeech===u){practiceSpeech=null;speechStatus('⚠️ Sprachausgabe: '+e.error+'. „Andere Stimme“ testen.')}};
-    speechStatus('⏳ Sprachausgabe wird gestartet …');
-    synth.speak(u);
-    if(synth.paused)synth.resume();
-    let el=document.getElementById('speech-alternate');
-    if(!el){
-      const status=document.getElementById('speech-status');
-      if(status){el=document.createElement('button');el.id='speech-alternate';el.type='button';el.textContent='🔊 Andere Stimme testen';el.className='btn secondary';el.style.cssText='margin:8px 0;font-size:14px;padding:8px 12px';status.insertAdjacentElement('afterend',el)}
-    }
-    if(el)el.onclick=()=>{speechFallbackMode=!speechFallbackMode;speakText(encodeURIComponent(value),rate,true)};
-  }catch(e){speechStatus('⚠️ Sprachausgabe konnte nicht gestartet werden: '+(e.message||'unbekannt'))}
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(value);
+  practiceSpeech=u;
+  u.lang='en-GB';
+  u.rate=rate;
+  u.onend=()=>{practiceSpeech=null};
+  synth.speak(u);
 }
 function endButton(){return `<button class="btn secondary" onclick="endSession()">Abmelden</button>`}function nav(extra=''){return `<div class="crumbs"><button onclick="home()">English Practice</button>${extra}<span style="margin-left:auto">${endButton()}</span></div>${gameBar()}`}
 function home(){if(typeof TestFocus!=='undefined')TestFocus.stop();stopAssessmentAudio();if(location.hash)history.replaceState(null,'',location.pathname+location.search);app.innerHTML=`<section class="hero home-hero"><div class="hero-copy"><h1>Let’s <span>practise!</span></h1><p>Dein Englischtraining – Schritt für Schritt.</p></div></section>${gameBadges()}<div id="practice-connection">${PracticeLink.markup()}</div><nav class="home-actions" aria-label="Deine Bereiche"><button class="btn secondary" onclick="document.getElementById('practice-ways').scrollIntoView({behavior:'smooth'})">Üben ↓</button><button class="btn test-entry" onclick="assessments()">Zum Testbereich →</button><button class="btn secondary" onclick="TestHistory.open()">Meine Tests</button></nav><section id="practice-ways"><h2 class="section-title">Was möchtest du üben?</h2><div class="grid home-grid"><article class="card home-card" onclick="units()"><span class="home-icon">▤</span><span class="num">MY LWL</span><h3>Learning paths</h3><p class="small">Practise the vocabulary and grammar from your current unit.</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="topics()"><span class="home-icon">◎</span><span class="num">TOPICS</span><h3>My World</h3><p class="small">Vokabeln nach Themen üben · Alltag, Freizeit und unterwegs</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="skills()"><span class="home-icon">◇</span><span class="num">SKILLS</span><h3>Grammar & Skills</h3><p class="small">Use English in real situations.</p><span class="home-arrow">→</span></article><article class="card home-card" onclick="readingCorner()"><span class="home-icon">▯</span><span class="num">READING</span><h3>Reading Corner</h3><p class="small">Read short stories and check what you understood.</p><span class="home-arrow">→</span></article></div></section><div class="home-footer">${endButton()}</div>`}
