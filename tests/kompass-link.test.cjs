@@ -285,7 +285,7 @@ test('common test introduction removes self-selection and explains the 15/5/3 st
  const task={...catalog[0],differentiated:true,common_test:true,sample_size:20,question_count:23,kind:'vocabulary'};
  const c=setup(async()=>response({ok:true,first_name:'Alex'}),'',[task]);await authenticate(c);await vm.runInContext("assessmentOptions('u4-test-1')",c);
  const html=c.document.querySelector().innerHTML;assert.ok(!html.includes('ep-test-level'));assert.ok(!html.includes('Bitte wählen'));
- assert.match(html,/15 Wörter/);assert.match(html,/5 Wörter/);assert.match(html,/3 Sätze/);assert.match(html,/26 Punkte/);assert.doesNotMatch(html,/Kompetenz im Raster|Niveau wird erst|Freigabe gilt nur|Wortschatz-Teilnachweis/);
+ assert.match(html,/15 Wörter/);assert.match(html,/5 Wörter/);assert.match(html,/3 Sätze/);assert.match(html,/52 Punkte/);assert.doesNotMatch(html,/Kompetenz im Raster|Niveau wird erst|Freigabe gilt nur|Wortschatz-Teilnachweis/);
 });
 
 test('the evaluation button opens the stored answers and renders feedback safely',()=>{
