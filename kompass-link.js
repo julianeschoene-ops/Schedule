@@ -52,12 +52,15 @@ const PracticeLink = {
     for(const p of legacy.filter(p=>p?.p_token===token))await this.protectPending(p,token,pin);
     return [...merged.values()];
   },
+  outboxWrites:new Map(),
   async queueFinished(payload){
     const token=this.token,pin=this.pin,generation=this.generation;
     this.pending.push(payload);
     this.persist();
-    try{await this.protectPending(payload,token,pin);}
+    const write=this.protectPending(payload,token,pin);this.outboxWrites.set(payload.p_attempt_id,write);
+    try{await write;}
     catch(e){if(generation===this.generation){this.message='Gerätesicherung fehlgeschlagen. Bitte Seite offen lassen und Lehrkraft informieren.';this.paint();}}
+    finally{this.outboxWrites.delete(payload.p_attempt_id);}
     if(generation===this.generation)await this.flush();
   },
   async rpc(name, payload) {
@@ -247,16 +250,19 @@ const PracticeLink = {
       for (const payload of [...this.pending]) {
         if (generation !== this.generation || !this.active || payload.p_token !== token) break;
         try {
-          const {interruptions,...submission}=payload;
+          const write=this.outboxWrites.get(payload.p_attempt_id);if(write)await write.catch(()=>{});
+          if(generation!==this.generation)break;
+          if(payload.rejected)continue;
+          const {interruptions,rejected,...submission}=payload;
           const hasInterruptions=interruptions?.count>0;
           const r = payload.protocol==='vocab_lnw'?await this.rpc(hasInterruptions?'kompass_english_submit_vocab_v2':'kompass_english_submit_vocab',{p_token:payload.p_token,p_pin:this.pin,p_attempt_id:payload.p_attempt_id,p_answers:payload.p_answers,...(hasInterruptions?{p_interruptions:interruptions.count}:{})}):await this.rpc(hasInterruptions?'kompass_english_submit_result_v4':'kompass_english_submit_result_v3', {...submission,p_pin:this.pin,...(hasInterruptions?{p_interruptions:interruptions.count}:{})});
           if (generation !== this.generation) break;
           if (!r.saved) {
             if (r.window_closed || r.practice_only || r.update_required) {
-              // Keep rejected submissions for authorized recovery; never silently delete.
+              payload.rejected=true;await this.protectPending(payload,token,this.pin).catch(()=>{});
 
               if (this.attempt?.id === payload.p_attempt_id) { this.attempt.status = 'failed'; this.message = r.message; }
-              this.persist(); this.paint(); break;
+              this.persist(); this.paint(); continue;
             }
             if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
             this.message = r.message || 'Speicherung nicht bestätigt.'; this.paint(); break;
@@ -282,6 +288,7 @@ const PracticeLink = {
     } finally { this.flushing = false; }
   },
   canEnd() {
+    if(this.outboxWrites.size){this.message='Dein Ergebnis wird gerade gesichert. Bitte noch nicht abmelden.';this.paint();return false;}
     return !this.pending.length || confirm('Es warten noch Testergebnisse auf die Übertragung. Bitte möglichst erst übertragen. Bei erfolgreicher Gerätesicherung können sie nach deiner nächsten Anmeldung erneut gesendet werden. Trotzdem beenden?');
   }
 };
@@ -294,5 +301,5 @@ setInterval(() => {
     if (typeof autoEndSession === 'function') autoEndSession();
     else PracticeLink.reset();
   }
-  else if(PracticeLink.active&&PracticeLink.pending.length)void PracticeLink.flush();
+  else if(PracticeLink.active&&PracticeLink.pending.some(p=>!p.rejected))void PracticeLink.flush();
 }, 30000);
