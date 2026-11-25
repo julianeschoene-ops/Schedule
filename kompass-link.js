@@ -19,6 +19,47 @@ const PracticeLink = {
       sessionStorage.setItem(this.storageKey, JSON.stringify({token:code,last:this.last,pending:this.token ? this.pending : this.waitingPending}));
     } catch (_) { /* Current tab still works if session storage is unavailable. */ }
   },
+  async outboxKey(token,pin){
+    const enc=new TextEncoder(), material=await crypto.subtle.importKey('raw',enc.encode(token+':'+pin),'PBKDF2',false,['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode('kompass-outbox-v1'),iterations:120000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  },
+  async outboxPrefix(token){
+    const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));
+    return 'ep-outbox-v1:'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('')+':';
+  },
+  async protectPending(payload,token,pin){
+    const key=await this.outboxKey(token,pin),prefix=await this.outboxPrefix(token),iv=crypto.getRandomValues(new Uint8Array(12));
+    const {p_token,...body}=payload;
+    const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(body)));
+    localStorage.setItem(prefix+payload.p_attempt_id,JSON.stringify({iv:Array.from(iv),data:Array.from(new Uint8Array(encrypted))}));
+  },
+  async recoverPending(token,pin){
+    const key=await this.outboxKey(token,pin),prefix=await this.outboxPrefix(token),out=[];
+    for(let i=0;i<localStorage.length;i++){
+      const name=localStorage.key(i);if(!name?.startsWith(prefix))continue;
+      const box=JSON.parse(localStorage.getItem(name));
+      const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(box.iv)},key,new Uint8Array(box.data));
+      const payload=JSON.parse(new TextDecoder().decode(raw));
+      if(name!==prefix+payload.p_attempt_id)throw new Error('Ungültige Warteschlange');
+      out.push({...payload,p_token:token});
+    }
+    return out;
+  },
+  async forgetPending(token,id){localStorage.removeItem(await this.outboxPrefix(token)+id);},
+  async restoreOwnPending(token,pin,legacy){
+    const recovered=await this.recoverPending(token,pin);
+    const merged=new Map([...legacy,...recovered].filter(p=>p?.p_token===token).map(p=>[p.p_attempt_id,p]));
+    for(const p of legacy.filter(p=>p?.p_token===token))await this.protectPending(p,token,pin);
+    return [...merged.values()];
+  },
+  async queueFinished(payload){
+    const token=this.token,pin=this.pin,generation=this.generation;
+    this.pending.push(payload);
+    this.persist();
+    try{await this.protectPending(payload,token,pin);}
+    catch(e){if(generation===this.generation){this.message='Gerätesicherung fehlgeschlagen. Bitte Seite offen lassen und Lehrkraft informieren.';this.paint();}}
+    if(generation===this.generation)await this.flush();
+  },
   async rpc(name, payload) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 12000);
     try {
@@ -71,7 +112,7 @@ const PracticeLink = {
     try{const data=await this.rpc('kompass_english_login',{p_code:shortCode,p_symbol:symbol});if(generation!==this.generation)return;
       if(!data.ok||!/^[a-f0-9]{64}$/.test(data.token||'')||!/^[0-9]{6}$/.test(data.pin||'')){this.state='access';this.loginExpanded=true;this.message=data.message||'Code oder Symbol stimmt nicht.';this.paint();return}
       this.token=data.token;this.pin=data.pin;this.name=data.first_name;this.last=Date.now();this.candidate=null;
-      this.pending=this.restoredPending.filter(p=>p?.p_token===data.token&&/^(?:vocab|assessment):lwl-/.test(p.p_task_key||''));this.restoredPending=[];this.selectedSymbol='';this.state='confirm';this.persist();this.paint();
+      this.pending=await this.restoreOwnPending(data.token,data.pin,this.restoredPending.filter(p=>p?.p_token===data.token&&/^(?:vocab|assessment):lwl-/.test(p.p_task_key||'')));if(generation!==this.generation)return;this.restoredPending=[];this.selectedSymbol='';this.state='confirm';this.persist();this.paint();
     }catch(_){if(generation!==this.generation)return;this.state='access';this.loginExpanded=true;this.message='Anmelden klappt gerade nicht. Bitte prüfe die Verbindung und versuche es noch einmal.';this.paint()}
   },
   async connect(raw, pending = []) {
@@ -102,7 +143,7 @@ const PracticeLink = {
         this.state = 'pin'; this.message = data.message || 'QR-Code oder PIN ungültig.'; this.paint(); return;
       }
       this.token = code; this.pin = pin; this.name = data.first_name; this.last = Date.now();
-      this.pending = this.waitingPending || []; this.waitingPending = [];
+      this.pending = await this.restoreOwnPending(code,pin,this.waitingPending||[]);if(generation!==this.generation)return; this.waitingPending = [];
       this.state = 'confirm'; this.persist(); this.paint();
     } catch (e) {
       if (generation !== this.generation) return;
@@ -180,14 +221,14 @@ const PracticeLink = {
     if (this.attempt !== a) return;
     if (!a.token || !this.active || a.token !== this.token) { a.status = 'guest'; return; }
     a.status = 'pending';
-    this.pending.push({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max,p_test_date:a.testDate,interruptions:typeof TestFocus!=='undefined'?TestFocus.snapshot():{count:0}});
+    void this.queueFinished({p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_topic:a.topic,p_points:points,p_max_points:max,p_test_date:a.testDate,interruptions:typeof TestFocus!=='undefined'?TestFocus.snapshot():{count:0}});
     if(typeof TestFocus!=='undefined')TestFocus.stop();
-    this.persist(); this.flush();
+    this.paint();
   },
   finishVocab(answers) {
     const a=this.attempt;if(!a||a.status!=='started')return;this.touch();if(this.attempt!==a||!this.active||a.token!==this.token)return;
     a.status='pending';
-    this.pending.push({protocol:'vocab_lnw',p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_answers:answers,interruptions:typeof TestFocus!=='undefined'?TestFocus.snapshot():{count:0}});if(typeof TestFocus!=='undefined')TestFocus.stop();this.persist();this.flush();
+    void this.queueFinished({protocol:'vocab_lnw',p_token:a.token,p_attempt_id:a.id,p_task_key:a.taskKey,p_answers:answers,interruptions:typeof TestFocus!=='undefined'?TestFocus.snapshot():{count:0}});if(typeof TestFocus!=='undefined')TestFocus.stop();this.paint();
   },
   resultMarkup() {
     const a = this.attempt;
@@ -212,14 +253,17 @@ const PracticeLink = {
           if (generation !== this.generation) break;
           if (!r.saved) {
             if (r.window_closed || r.practice_only || r.update_required) {
-              this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
+              // Keep rejected submissions for authorized recovery; never silently delete.
+
               if (this.attempt?.id === payload.p_attempt_id) { this.attempt.status = 'failed'; this.message = r.message; }
-              this.persist(); this.paint(); continue;
+              this.persist(); this.paint(); break;
             }
             if (this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
             this.message = r.message || 'Speicherung nicht bestätigt.'; this.paint(); break;
           }
 
+          await this.forgetPending(token,payload.p_attempt_id);
+          if(generation!==this.generation)break;
           this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
           if (this.attempt?.id === payload.p_attempt_id){this.attempt.status = 'saved';if(r.needs_review!==undefined)this.attempt.needsReview=r.needs_review;if(payload.protocol==='vocab_lnw'||hasInterruptions)this.attempt.outcome=r;}
           this.persist(); this.paint();
@@ -227,7 +271,6 @@ const PracticeLink = {
           if (generation !== this.generation) break;
           if (e.status >= 400 && e.status < 500) {
             this.message = [401,403,404].includes(e.status) || e.code === 'PGRST202' ? 'Diese Seitenversion kann nicht mehr übertragen. Bitte Seite neu laden und QR-Code / PIN erneut öffnen.' : (e.message || 'Ergebnis abgelehnt. Bitte deine Lehrkraft fragen.');
-            this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
             if(this.attempt?.id === payload.p_attempt_id) this.attempt.status = 'failed';
             this.persist();
           }
@@ -237,7 +280,7 @@ const PracticeLink = {
     } finally { this.flushing = false; }
   },
   canEnd() {
-    return !this.pending.length || confirm('Es warten noch Testergebnisse auf die Übertragung. Beim Beenden werden sie auf diesem Gerät gelöscht. Trotzdem beenden?');
+    return !this.pending.length || confirm('Es warten noch Testergebnisse auf die Übertragung. Bitte möglichst erst übertragen. Bei erfolgreicher Gerätesicherung können sie nach deiner nächsten Anmeldung erneut gesendet werden. Trotzdem beenden?');
   }
 };
 PracticeLink.capture();
@@ -249,4 +292,5 @@ setInterval(() => {
     if (typeof autoEndSession === 'function') autoEndSession();
     else PracticeLink.reset();
   }
+  else if(PracticeLink.active&&PracticeLink.pending.length)void PracticeLink.flush();
 }, 30000);
