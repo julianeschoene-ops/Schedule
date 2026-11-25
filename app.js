@@ -115,7 +115,13 @@ async function startAssessment(id){const access=await loadAssessmentAccess();if(
  if(t.differentiated||t.server_check){try{await VocabTest.start(t)}catch(e){app.innerHTML=testAreaGate(e.message||'Teststart fehlgeschlagen. Bitte erneut versuchen.')}return}
 
  if(t.kind==='listening'&&(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')){app.innerHTML=testAreaGate('Dieses Gerät kann die Hörtexte nicht abspielen. Bitte Kopfhörer und ein geeignetes Gerät mit deiner Lehrkraft prüfen.');return}
- if(!PracticeLink.beginTest(t.task_key,t.title))return;current=t.list||null;mode='assessment';i=0;score=0;answered=false;deck=shuffle(t.questions||VOCAB[t.list].words);renderQ()}
+ if(!PracticeLink.beginTest(t.task_key,t.title))return;current=t.list||null;mode='assessment';i=0;score=0;answered=false;deck=shuffle(t.questions||VOCAB[t.list].words);
+ if(t.kind==='reading'&&Array.isArray(t.question_variants)&&t.question_variants.length>1){
+ const key='ep-reading-last-'+t.task_key;let last=-1;try{last=Number(sessionStorage.getItem(key)??-1)}catch(_){}
+ const choices=t.question_variants.map((_,n)=>n).filter(n=>n!==last);const selected=choices[Math.floor(Math.random()*choices.length)];
+ try{sessionStorage.setItem(key,String(selected))}catch(_){}
+ deck=shuffle(t.question_variants[selected]).map(q=>{const options=shuffle(q.options.map((label,index)=>({label,index})));return {...q,options:options.map(o=>o.label),answer:options.findIndex(o=>o.index===q.answer)}});
+ }renderQ()}
 function renderCompetencyQuestion(){const q=deck[i],audio=activeAssessment.kind==='listening';if(!assessmentAudio||assessmentAudio.question!==i)assessmentAudio={question:i,plays:0,heard:false,playing:false};
  shell(`<section class="question" style="text-align:left"><div class="small">${audio?'Hörverstehen':'Leseverstehen'} · Kompetenzcheck</div>${audio?'<button id="ep-audio-play" class="btn secondary" onclick="playCompetencyAudio()">Gespräch anhören · höchstens zweimal</button><p id="ep-audio-status" role="status">Bitte zuerst das Gespräch vollständig anhören.</p>':`<blockquote lang="en">${esc(q.text)}</blockquote>`}<h2>${esc(q.q)}</h2><div class="choices">${q.options.map((o,n)=>`<button class="choice ep-test-choice" ${audio&&!assessmentAudio.heard?'disabled':''} onclick="answerCompetencyQuestion(${i},${n})">${esc(o)}</button>`).join('')}</div></section>`)}
 function pauseAssessmentAudio(){if(!assessmentAudio?.playing)return;assessmentAudioEpoch++;assessmentAudio.playing=false;assessmentAudio.plays=Math.max(0,assessmentAudio.plays-1);if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel()}
