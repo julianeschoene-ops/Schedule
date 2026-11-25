@@ -263,6 +263,7 @@ const PracticeLink = {
           }
 
           if(payload.protocol==='vocab_lnw'&&typeof VocabTest!=='undefined'){try{await VocabTest.forgetDraft(token,payload.p_task_key,payload.p_attempt_id)}catch(e){console.warn('Draft cleanup pending')}}
+          if(payload.protocol!=='vocab_lnw'&&typeof ReadingDraft!=='undefined'){try{await ReadingDraft.forget(token,payload.p_task_key,payload.p_attempt_id)}catch(e){console.warn('Reading draft cleanup pending')}}
           await this.forgetPending(token,payload.p_attempt_id);
           if(generation!==this.generation)break;
           this.pending = this.pending.filter(p => p.p_attempt_id !== payload.p_attempt_id);
