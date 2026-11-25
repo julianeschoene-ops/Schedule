@@ -16,7 +16,7 @@ const PracticeLink = {
     try {
       const code = this.token || this.candidate;
       if (!code) return sessionStorage.removeItem(this.storageKey);
-      sessionStorage.setItem(this.storageKey, JSON.stringify({token:code,shortCode:this.entryCode||undefined,last:this.last,pending:this.token ? this.pending : this.waitingPending}));
+      sessionStorage.setItem(this.storageKey, JSON.stringify({token:code,last:this.last,pending:this.token ? this.pending : this.waitingPending}));
     } catch (_) { /* Current tab still works if session storage is unavailable. */ }
   },
   async rpc(name, payload) {
@@ -55,7 +55,7 @@ const PracticeLink = {
     const hadQR=this.initialCode!==null;this.initialCode=null;
     this.reset();
     if(hadQR&&typeof clearPracticeData==='function')clearPracticeData();
-    if(stored?.token&&Date.now()-Number(stored.last)<this.idleMs){this.entryCode=stored.shortCode||'';this.restoredPending=Array.isArray(stored.pending)?stored.pending:[];this.state='access';}
+    if(stored?.token&&Date.now()-Number(stored.last)<this.idleMs){this.entryCode='';this.restoredPending=Array.isArray(stored.pending)?stored.pending:[];this.state='access';}
     else if(hadQR)this.state='access';
     this.paint();
   },
@@ -129,7 +129,7 @@ const PracticeLink = {
   },
   markup() {
     const button = '<button class="btn secondary" onclick="PracticeLink.enterCode()">Mit Code anmelden</button>';
-    if(this.state==='access')return this.loginExpanded ? `<div class="practice-link login-card"><form onsubmit="event.preventDefault();PracticeLink.signIn()"><label for="practice-short-code"><b>Dein Code</b></label><input id="practice-short-code" class="input short-code" type="text" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" value="${this.escape(this.entryCode)}" autocomplete="off" aria-describedby="practice-access-error"><fieldset class="symbol-picker"><legend>Dein Symbol</legend><div class="symbol-grid">${Object.entries(this.symbols).map(([key,[icon,label]])=>`<button type="button" class="symbol-choice ${this.selectedSymbol===key?'chosen':''}" aria-label="${label}" aria-pressed="${this.selectedSymbol===key}" onclick="PracticeLink.chooseSymbol('${key}')">${icon}</button>`).join('')}</div></fieldset><p id="practice-access-error" role="status">${this.escape(this.message)}</p><button class="btn" type="submit">Anmelden</button><button class="btn secondary" type="button" onclick="PracticeLink.toggleLogin()">Schließen</button></form></div>` : `<div class="practice-link" style="padding:8px 0"><button class="btn secondary" onclick="PracticeLink.toggleLogin()">Mit Code und Symbol anmelden</button></div>`;
+    if(this.state==='access')return this.loginExpanded ? `<div class="practice-link login-card"><form autocomplete="off" onsubmit="event.preventDefault();PracticeLink.signIn()"><label for="practice-short-code"><b>Dein Code</b></label><input id="practice-short-code" class="input short-code" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" value="${this.escape(this.entryCode)}" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="practice-access-error"><fieldset class="symbol-picker"><legend>Dein Symbol</legend><div class="symbol-grid">${Object.entries(this.symbols).map(([key,[icon,label]])=>`<button type="button" class="symbol-choice ${this.selectedSymbol===key?'chosen':''}" aria-label="${label}" aria-pressed="${this.selectedSymbol===key}" onclick="PracticeLink.chooseSymbol('${key}')">${icon}</button>`).join('')}</div></fieldset><p id="practice-access-error" role="status">${this.escape(this.message)}</p><button class="btn" type="submit">Anmelden</button><button class="btn secondary" type="button" onclick="PracticeLink.toggleLogin()">Schließen</button></form></div>` : `<div class="practice-link" style="padding:8px 0"><button class="btn secondary" onclick="PracticeLink.toggleLogin()">Mit Code und Symbol anmelden</button></div>`;
     if (this.state === 'pin') return `<div class="practice-link"><form onsubmit="event.preventDefault();PracticeLink.login()"><label for="practice-pin"><b>Deine persönliche PIN</b></label><p>Gib die sechs Ziffern von deiner Zugangskarte ein.</p><input id="practice-pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" aria-describedby="practice-pin-error" style="width:160px;font-size:1.2rem;padding:10px;border:1px solid #d4bfc3;border-radius:8px"><button class="btn" type="submit">Anmelden</button><p id="practice-pin-error" role="status">${this.escape(this.message)}</p></form><button class="btn secondary" onclick="PracticeLink.reset()">Ohne Anmeldung üben</button></div>`;
     if (this.state === 'checking') return '<div class="practice-link" role="status">Dein Übungscode wird geprüft …</div>';
     if (this.state === 'confirm') return `<div class="practice-link"><b>Hallo ${this.escape(this.name)}! Bist du das?</b><p></p><button class="btn" onclick="PracticeLink.confirm()">Ja, das bin ich</button> <button class="btn secondary" onclick="PracticeLink.reset()">Das bin ich nicht</button></div>`;
